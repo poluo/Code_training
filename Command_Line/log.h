@@ -13,7 +13,7 @@ typedef struct input_element_strcut
 }input_element_strcut;
 typedef struct input_log_struct
 {
-	input_element_strcut *input_element_ptr;
+	input_element_strcut input_element_ptr[LOG_MAX_NUM];
 	int log_size;
 }input_log_struct;
 

@@ -19,7 +19,7 @@ typedef struct input_log_struct
 
 
 extern int log_in(char *str_tmp);
-extern int log_out(char **str_tmp,int run_count);
+extern int log_out(char **str_tmp,int *run_count);
 
 
 #endif

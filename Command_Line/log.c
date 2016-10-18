@@ -30,10 +30,10 @@ int log_in(char *str_tmp)
 		
 		input_log.log_size++;
 
-		for(i=0;i<input_log.log_size;i++)
+		/*for(i=0;i<input_log.log_size;i++)
 		{
 			printf("input_log %d %s\n",i,(input_log.input_element_ptr+i)->str_ptr);
-		}
+		}*/
 		if(input_log.log_size>=LOG_MAX_NUM)
 			input_log.log_size=0;
 		
@@ -42,16 +42,16 @@ int log_in(char *str_tmp)
 
 
 }
-int log_out(char **str_tmp,int run_count)
+int log_out(char **str_tmp,int *run_count)
 {
 	
-	if (run_count > input_log.log_size)
+	if (*run_count > input_log.log_size)
 	{
-		run_count = input_log.log_size;
+		*run_count = input_log.log_size;
 	}
-	else if (run_count < 1)
+	else if (*run_count < 1)
 	{
-		run_count = 1;
+		*run_count = 1;
 	}
 	
 
@@ -59,7 +59,7 @@ int log_out(char **str_tmp,int run_count)
 	if (strlen(*str_tmp)==0)
 	{
 		//printf("logsize=%d",input_log.log_size);
-		memcpy(&input_element,(input_log.input_element_ptr+input_log.log_size-run_count),sizeof(input_element_strcut));
+		memcpy(&input_element,(input_log.input_element_ptr+input_log.log_size-*run_count),sizeof(input_element_strcut));
 		memcpy(*str_tmp,input_element.str_ptr,input_element.str_len);
 		//printf("log_out %s\n",*str_tmp);
 		return LOG_SUCCESS;

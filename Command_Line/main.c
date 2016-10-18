@@ -48,19 +48,6 @@ int cmd_match()
 	int direct_key_count=0;
     while ((c = GET_CH) !=ENTER_KEY&&c != EOF)
 	{
-		/*input a Tab process*/
-		if (c == '\t')
-		{
-			//printf("enter a tab\n");
-			tab_proc(tmp_str,&n);
-			//break;
-		}
-		/*input a backspace*/
-		else if (c=='\b') //backspace
-		{
-			backspace_proc(tmp_str,&n);
-		}
-		/*swicth is or not direct key*/
 		direct_key=swicth_direct_key(last_last_c,last_c,c);
 		if (direct_key!=KEY_ERR)
 		{
@@ -70,37 +57,50 @@ int cmd_match()
 				direct_key_count--;
 				//printf("input Down key ,key_count=%d\n",direct_key_count);
 				MOVEDOWN(1);
-				direct_key_proc(&tmp_direct_str,&n,direct_key_count);
-			
-
+				direct_key_proc(&tmp_direct_str,&n,&direct_key_count);
 			}
 			else if (direct_key==UP)
 			{
 				direct_key_count++;
 				//printf("input Up key ,key_count=%d\n",direct_key_count);
 				MOVEDOWN(1);
-				direct_key_proc(&tmp_direct_str,&n,direct_key_count);
+				direct_key_proc(&tmp_direct_str,&n,&direct_key_count);
 			}
+			//printf("direct_key_count=%d",direct_key_count);
 		}
+		/*input a Tab process*/
+		else if (c == '\t')
+		{
+			tab_proc(tmp_str,&n);
+			direct_key_count=0;
+		}
+		/*input a backspace*/
+		else if (c=='\b') //backspace
+		{
+			if(direct_key_count!=0)
+			{
+				memcpy(tmp_str,tmp_direct_str,n);
+				direct_key_count=0;
+			}
+			backspace_proc(tmp_str,&n);
+		}
+		/*swicth is or not direct key*/
 		else
 		{
 			*(tmp_str + n) = c;
 			n++;
-			
 		}
 		last_last_c=last_c;
 		last_c=c;
 	}
-	
-	
+	if(direct_key_count!=0)
+	{
+		memcpy(tmp_str,tmp_direct_str,n);
+		direct_key_count=0;
+	}
 	*(tmp_str + n) = '\0';
 	n++;
-	//printf("%s\n",tmp_str);
 	copy_result=str_copy(tmp_str);
-	//printf("copy_result=%d\n",copy_result);
-	
-	//free(tmp_direct_str);
-	//free(tmp_str);
 	return copy_result;
 }
 

@@ -17,7 +17,7 @@ extern int backspace_proc(char *str,int *str_size);
 extern int swicth_direct_key(char last_last_c, char last_c,char c);
 extern void print_head();
 
-extern void direct_key_proc(char **str,int *str_size,int run_count);
+extern void direct_key_proc(char **str,int *str_size,int *run_count);
 
 
 #endif

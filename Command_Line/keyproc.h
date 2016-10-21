@@ -8,8 +8,6 @@
 #define	RIGHT 		3
 #define LEFT 		4
 
-#define CMD_MAX_NUM 	5
-#define CMD_MAX_LEN 	10
 
 
 extern int tab_proc(char *str,int *str_size);

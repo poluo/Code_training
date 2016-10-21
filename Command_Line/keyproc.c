@@ -5,20 +5,18 @@
 #include "keyproc.h"
 #include "platform.h"
 #include "log.h"
-
-
-static char *arr[5] = { "help", "list", "get", "set", "quit" };
+#include "cmd_list.h"
 
 int tab_proc(char *str,int *str_size)
 {
 	int i=0;
 	for (i = 0; i < CMD_MAX_NUM; ++i)
 	{
-		if (strncmp(str,arr[i],*str_size)==0)
+		if (strncmp(str,cmd_list_arr[i].fn_name,*str_size)==0)
 		{
-			*str_size=strlen(arr[i]);
+			*str_size=strlen(cmd_list_arr[i].fn_name);
 			//printf("%d\n",*str_size);
-			memcpy(str,arr[i],*str_size);
+			memcpy(str,cmd_list_arr[i].fn_name,*str_size);
 			BACK_LINE_HEAD;//back line head
 			print_head();
 			printf("%s",str);

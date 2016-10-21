@@ -4,7 +4,7 @@
 #include "log.h"
 #include "platform.h"
 #include "keyproc.h"
-
+#include "cmd_list.h"
 /*string copy processs*/
 #define STR_COPY_OK 	0
 #define STR_COPY_QUIT 	1

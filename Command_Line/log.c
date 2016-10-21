@@ -6,7 +6,6 @@
 static input_log_struct input_log;
 int log_in(char *str_tmp)
 {
-	int i=0;
 	input_element_strcut input_element = { NULL, 0 };
 	
 	if (str_tmp==NULL)

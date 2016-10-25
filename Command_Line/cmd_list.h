@@ -17,6 +17,9 @@ int cmd_help(char **args,int args_num);
 int cmd_show(char **args,int args_num);
 int cmd_caculator(char **args,int args_num);
 int cmd_quit(char **args,int args_num);
+int cmd_test(char **args,int args_num);
+int cmd_match(char *str);
+
 const cmd_list cmd_list_arr[CMD_MAX_NUM];
 
 

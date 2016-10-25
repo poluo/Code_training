@@ -10,7 +10,7 @@
 #define STR_COPY_QUIT 	1
 
 
-int cmd_match();
+int cmd_get();
 
 int str_copy(char *str_tmp);
 void cmd_manage(int type,char **str_tmp,int run_count);
@@ -23,7 +23,7 @@ int main()
     while(continue_flag)
     {
         print_head();
-		continue_flag = cmd_match();
+		continue_flag = cmd_get();
     }
 
 	printf("\nExit Command Line...\n");
@@ -35,12 +35,13 @@ int main()
 }
 
 
-int cmd_match()
+int cmd_get()
 {
 	/*最大cmd 字符长度是CMD_MAX_LEN=10*/
 	char *tmp_str = calloc(0,sizeof(char)*CMD_MAX_LEN);
 	char *tmp_direct_str=calloc(0,sizeof(char)*CMD_MAX_LEN);
 	int  n = 0;
+	int i=0;
 	/*used to confirm wheater input direct key */
 	char c = 0,last_c=0,last_last_c=0;
 	int copy_result=0;
@@ -76,7 +77,11 @@ int cmd_match()
 		}
 		/*input a backspace*/
 		else if (c=='\b') //backspace
-		{
+		{	
+			if(last_c!='\b')
+			{
+				n--;
+			}
 			if(direct_key_count!=0)
 			{
 				memcpy(tmp_str,tmp_direct_str,n);
@@ -99,8 +104,11 @@ int cmd_match()
 		direct_key_count=0;
 	}
 	*(tmp_str + n) = '\0';
-	n++;
 	copy_result=str_copy(tmp_str);
+	if(cmd_match(tmp_str))
+	{
+		printf("No matched Command,try again!\n");
+	}
 	return copy_result;
 }
 
@@ -108,7 +116,7 @@ int str_copy(char *str_tmp)
 {
 	
 	log_in(str_tmp);
-	//PRINT_STR;
+	PRINT_STR;
 	if (strcmp(str_tmp, "quit") == 0)
 	{
 		//printf("return 0 \n");

@@ -78,10 +78,6 @@ int cmd_get()
 		/*input a backspace*/
 		else if (c=='\b') //backspace
 		{	
-			if(last_c!='\b')
-			{
-				n--;
-			}
 			if(direct_key_count!=0)
 			{
 				memcpy(tmp_str,tmp_direct_str,n);
@@ -116,7 +112,7 @@ int str_copy(char *str_tmp)
 {
 	
 	log_in(str_tmp);
-	PRINT_STR;
+	//PRINT_STR;
 	if (strcmp(str_tmp, "quit") == 0)
 	{
 		//printf("return 0 \n");

@@ -50,7 +50,7 @@ void direct_key_proc(char **str,int *str_size,int *run_count)
 	int ret=0;	
 	ret=log_out(str,run_count);
 	ret=(ret==LOG_SUCCESS)?(0):(printf("LOG out error! %d\n",ret));
-	*(str_size)=strlen(*str)+1;
+	*(str_size)=strlen(*str);//do not +1
 	CLEAR_LINE;
 	BACK_LINE_HEAD;//delete same line
 	print_head();

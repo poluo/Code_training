@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "log.h"
 #include "platform.h"
 #include "keyproc.h"
@@ -47,6 +48,7 @@ int cmd_get()
 	int copy_result=0;
 	int direct_key=0;
 	int direct_key_count=0;
+	
     while ((c = GET_CH) !=ENTER_KEY&&c != EOF)
 	{
 		direct_key=swicth_direct_key(last_last_c,last_c,c);
@@ -100,14 +102,17 @@ int cmd_get()
 		direct_key_count=0;
 	}
 	*(tmp_str + n) = '\0';
-	copy_result=str_copy(tmp_str);
-	if(cmd_match(tmp_str))
+	if(0==strlen(tmp_str))
 	{
-		printf("No matched Command,try again!\n");
+		copy_result=1;
+	}
+	else
+	{	
+		copy_result=str_copy(tmp_str);
+		cmd_match(tmp_str);
 	}
 	return copy_result;
 }
-
 int str_copy(char *str_tmp)
 {
 	

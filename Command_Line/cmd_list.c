@@ -5,46 +5,113 @@ const cmd_list cmd_list_arr[CMD_MAX_NUM] =
 	{"help","show the usage of this program",cmd_help},
 	{"quit","quit this program",cmd_quit},
 	{"show","show something.......",cmd_show},
-	{"caulator","enter  caulator",cmd_caculator},
-	{"test","test function",cmd_test}
+	{"cal","enter calculator",cmd_caculator},
+	{"test","test function",cmd_test},
+	{"fun","just for take place",cmd_fun},
+	{"fun","just for take place",cmd_fun},
+	{"fun","just for take place",cmd_fun},
+	{"fun","just for take place",cmd_fun},
+	{"fun","just for take place",cmd_fun}
 };
 int cmd_match(char *str)
 {
 	int i=0;
+	char *args[CMD_MAX_ARGS];
+	int args_num=0;
+	int ret=0;
+	args_extract(str,args,&args_num);
 	for(i=0;i<CMD_MAX_NUM;i++)
 	{
-		if(strcmp(str,cmd_list_arr[i].fn_name)==0)
+		if(strcmp(args[0],cmd_list_arr[i].fn_name)==0)
 		{
-			cmd_list_arr[i].do_fn(NULL,0);
-			return 0;
+			args_num--;
+			if((ret=cmd_list_arr[i].do_fn(&args[1],args_num))==CMD_PROC_SUCCESS)
+			{
+				/*Command Proc Success*/
+				return 0;
+			}
+			else if(ret==CMD_PROC_ARGS_ERROR)
+			{
+				printf("Arguments list Error\n");
+				return 0;
+			}
+			else if(ret==CMD_PROC_OTHER_ERROR)
+			{
+				printf("Unknow Error");
+				return 0;
+			}
 		}
 		
 	}
-	return 1;
+	printf("NO matched command in list,tey again.\n");
+	return 0;
 }
-
+void args_extract(char *tmp_str,char *args[],int *args_num)
+{
+	char *ptr;
+    int valid=0;
+    ptr = tmp_str;
+    *args_num = 0;
+    while (*args_num < CMD_MAX_ARGS && *ptr != '\0')
+    {
+        while (*ptr != '\0'&& isspace(*ptr))
+        {
+            *ptr = '\0';
+            ptr++;
+            valid = 0;
+        }
+        if (*ptr != '\0')
+        {
+            if (!valid)
+            {
+                valid = 1;
+                args[*args_num] = ptr;
+                (*args_num)++;
+            }
+            ptr++;
+        }
+    }
+}
+/*show guide about this program*/
 int cmd_help(char **args,int args_num)
 {
-	printf("help\n");
-	printf("ok\n");
-	printf("over\n");
-	return 0;
+	int i=0;
+	if(args_num!=0)
+	{
+		printf("usage:help,show some helpful message about this program\n");
+		return CMD_PROC_ARGS_ERROR;
+	}
+	else
+	{
+		printf("\nSupport Command list:\n");
+		for(i=0;i<CMD_MAX_NUM;i++)
+		{
+			if(cmd_list_arr[i].fn_name!=NULL)
+				printf("%s\t:%s\n",cmd_list_arr[i].fn_name,cmd_list_arr[i].fn_description);
+		}
+		printf("\nThat's all support command now\n\n");
+		return CMD_PROC_SUCCESS;
+	}
 }
 int cmd_show(char **args,int args_num)
 {
 	printf("show\n");
 	printf("show over\n");
-	return 0;
+	return CMD_PROC_SUCCESS;
 }
 int cmd_caculator(char **args,int args_num)
 {
 	printf("enter a caculator program....\n");
 	printf("bye\n");
-	return 0;
+	return CMD_PROC_SUCCESS;
 }
 int cmd_quit(char **args,int args_num)
 {
-	return 0;
+	return CMD_PROC_SUCCESS;
+}
+int cmd_fun(char **args,int args_num)
+{
+	return CMD_PROC_SUCCESS;
 }
 int cmd_test(char **args,int args_num)
 {
@@ -101,7 +168,7 @@ int cmd_test(char **args,int args_num)
   
     // 关闭Python  
     Py_Finalize();  
-    return 0;  
+    return CMD_PROC_SUCCESS;  
 }
 
 

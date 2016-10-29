@@ -1,5 +1,5 @@
 import time
-import time
+import os
 dit={}
 def adduser():
     while True:
@@ -50,7 +50,13 @@ def showuser():
     sort=sorted(dit.items(),key=lambda e:e[0],reverse=False)
     for i in sort:
         print(i)
-        
+def exitsys():
+    with open("log.csv",'w') as fobj:
+        fobj.write('username,passwd\n')
+        for k,v in dit.items():
+            fobj.write("%s,%s" % (k,v[0]))
+            fobj.write("\n")
+    print('Data already saved!\n')
 flag=True
 while flag:
     print("Enter 'n' to add user,'l' to login,'e' to exit,'d' to delete user,'s' to show all username")
@@ -61,6 +67,7 @@ while flag:
         if choice=='n':
             adduser()
         elif choice=='e':
+            exitsys()
             flag=False
         elif choice=='d':
             deluser()
@@ -69,4 +76,4 @@ while flag:
         else:
             login()
 
-print("GoodBye")
+print("Good Bye")

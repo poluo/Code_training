@@ -5,8 +5,8 @@ const cmd_list cmd_list_arr[CMD_MAX_NUM] =
 	{"help","show the usage of this program",cmd_help},
 	{"quit","quit this program",cmd_quit},
 	{"show","show something.......",cmd_show},
-	{"cal","enter calculator",cmd_caculator},
-	{"test","test function",cmd_test},
+	{"calculator","enter calculator",cmd_caculator},
+	{"user","user sign in/up function",cmd_test},
 	{"fun","just for take place",cmd_fun},
 	{"fun","just for take place",cmd_fun},
 	{"fun","just for take place",cmd_fun},
@@ -83,13 +83,12 @@ int cmd_help(char **args,int args_num)
 	}
 	else
 	{
-		printf("\nSupport Command list:\n");
 		for(i=0;i<CMD_MAX_NUM;i++)
 		{
 			if(cmd_list_arr[i].fn_name!=NULL)
-				printf("%s\t:%s\n",cmd_list_arr[i].fn_name,cmd_list_arr[i].fn_description);
+				printf("%s:	%s\n",cmd_list_arr[i].fn_name,cmd_list_arr[i].fn_description);
 		}
-		printf("\nThat's all support command now\n\n");
+		printf("\n\nThat's all support command now\n\n");
 		return CMD_PROC_SUCCESS;
 	}
 }
@@ -123,9 +122,11 @@ int cmd_test(char **args,int args_num)
 		printf("call python failed!\n");
 		return 1;
 	}
+
     PyRun_SimpleString("print('hello python')");//把输入的字符串作为Python代码直接运行，返回0表示成功，-1表示有错。 
     PyRun_SimpleString("import sys");
-    PyRun_SimpleString("print '---import sys---'");   
+    PyRun_SimpleString("execfile('./userpw.py')"); 
+   /* PyRun_SimpleString("print '---import sys---'");   
     PyRun_SimpleString("sys.path.append('./')");  
     PyObject *pName,*pModule,*pDict,*pFunc,*pArgs,*result;
 
@@ -165,7 +166,7 @@ int cmd_test(char **args,int args_num)
     Py_DECREF(pName);  
     Py_DECREF(pArgs);  
     Py_DECREF(pModule);  
-  
+  */
     // 关闭Python  
     Py_Finalize();  
     return CMD_PROC_SUCCESS;  

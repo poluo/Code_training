@@ -1,17 +1,28 @@
-#include <Python.h>
+#include "CallPython.h"  //<Python.h> must call before <stdio.h> otherwise will warning
+#include <stdio.h>
 #include "cmd_list.h"
+
+extern void RunSimpleStringPython(const char *args);
+extern void RunPyhtonScript(const char *FileName);
+extern void CallFunPythonType1(const char * FileName,const char * Func,PyObject *pArg);
+extern void CallFunPythonType3(const char * FileName,const char * Func,int *Result ,PyObject *pArg);
+
+extern PyObject *ConvertPyObject(const char *Format,...);
+
+
+
 const cmd_list cmd_list_arr[CMD_MAX_NUM] = 
 {
-	{"help","show the usage of this program",cmd_help},
-	{"quit","quit this program",cmd_quit},
-	{"show","show something.......",cmd_show},
-	{"calculator","enter calculator",cmd_caculator},
-	{"user","user sign in/up function",cmd_test},
-	{"fun","just for take place",cmd_fun},
-	{"fun","just for take place",cmd_fun},
-	{"fun","just for take place",cmd_fun},
-	{"fun","just for take place",cmd_fun},
-	{"fun","just for take place",cmd_fun}
+	{"help","		show the usage of this program",cmd_help},
+	{"quit","		quit this program",cmd_quit},
+	{"show","		show something.......",cmd_show},
+	{"calculator","	enter calculator",cmd_caculator},
+	{"user","		user sign in/up function",cmd_user},
+	{"wget","		simulate linux wget command",cmd_wget},
+	{"fun","		just for take place",cmd_fun},
+	{"fun","		just for take place",cmd_fun},
+	{"fun","		just for take place",cmd_fun},
+	{"fun","		just for take place",cmd_fun}
 };
 int cmd_match(char *str)
 {
@@ -104,72 +115,34 @@ int cmd_caculator(char **args,int args_num)
 	printf("bye\n");
 	return CMD_PROC_SUCCESS;
 }
+/*quit is not completed in here*/
 int cmd_quit(char **args,int args_num)
 {
 	return CMD_PROC_SUCCESS;
 }
 int cmd_fun(char **args,int args_num)
 {
+	int ret=0;
+	CallFunPythonType1("demo","foo",NULL);//�޷���ֵ�޲���
+	CallFunPythonType1("demo","bar",ConvertPyObject("%d",5));
+	CallFunPythonType3("demo","too",&ret,NULL);
+	printf("ret=%d\n",ret);
+	CallFunPythonType3("demo","boo",&ret,ConvertPyObject("%d",8));
+	printf("ret=%d\n",ret);
 	return CMD_PROC_SUCCESS;
 }
-int cmd_test(char **args,int args_num)
+int cmd_wget(char **args,int args_num)
 {
-    int sum=0;
-	Py_Initialize();//初始化python 
-	//检查初始化是否成功
-	if (!Py_IsInitialized())
-	{
-		printf("call python failed!\n");
-		return 1;
-	}
-
-    PyRun_SimpleString("print('hello python')");//把输入的字符串作为Python代码直接运行，返回0表示成功，-1表示有错。 
-    PyRun_SimpleString("import sys");
-    PyRun_SimpleString("execfile('./userpw.py')"); 
-   /* PyRun_SimpleString("print '---import sys---'");   
-    PyRun_SimpleString("sys.path.append('./')");  
-    PyObject *pName,*pModule,*pDict,*pFunc,*pArgs,*result;
-
-    // 载入名为demo的脚本  
-    pName = PyString_FromString("demo");  
-    pModule = PyImport_Import(pName);  
-    if ( !pModule ) 
-    {  
-        printf("can't find demo.py");  
-        return 1;  
-    }  
-    pDict = PyModule_GetDict(pModule);  
-    if ( !pDict ) 
-    {  
-        return 1;  
-    }  
-    // 找出函数名为add的函数  
-    printf("----------------------\n");  
-    pFunc = PyDict_GetItemString(pDict, "add");  
-    if ( !pFunc || !PyCallable_Check(pFunc) ) 
-    {  
-        printf("can't find function [add]");  
-        getchar();  
-        return -1;  
-     }  
-    // 参数进栈  
-    //All integers are implemented as “long” integer objects of arbitrary size
-    
-    pArgs = PyTuple_New(2); 
-    PyTuple_SetItem(pArgs, 0, PyLong_FromLong(1L)); 
-    PyTuple_SetItem(pArgs, 1, PyLong_FromLong(2L));  
-  
-    // 调用Python函数  
-    result=PyObject_CallObject(pFunc, pArgs);  
-    PyArg_Parse(result, "i", &sum);
-    printf("sum=%d \n",sum);
-    Py_DECREF(pName);  
-    Py_DECREF(pArgs);  
-    Py_DECREF(pModule);  
-  */
-    // 关闭Python  
-    Py_Finalize();  
-    return CMD_PROC_SUCCESS;  
+	printf("arg 1 %s",args[0]);
+	return CMD_PROC_SUCCESS;
+	
+}
+int cmd_user(char **args,int args_num)
+{
+    //InitPython();
+	RunPyhtonScript("userpw");
+    //ExitPython();
+    return CMD_PROC_SUCCESS;
 }
 
 

@@ -21,10 +21,10 @@ int cmd_help(char **args,int args_num);
 int cmd_show(char **args,int args_num);
 int cmd_caculator(char **args,int args_num);
 int cmd_quit(char **args,int args_num);
-int cmd_test(char **args,int args_num);
+int cmd_user(char **args,int args_num);
 int cmd_match(char *str);
 int cmd_fun(char **args,int args_num);
-
+int cmd_wget(char **args,int args_num);
 void args_extract(char *tmp_str,char *args[],int *args_num);
 
 const cmd_list cmd_list_arr[CMD_MAX_NUM];

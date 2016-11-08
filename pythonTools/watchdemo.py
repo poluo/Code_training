@@ -3,15 +3,16 @@ import time
 import logging
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
-
+import writeLogTitle 
 class FileEventHandler(PatternMatchingEventHandler):
     def __init__(self):
         PatternMatchingEventHandler.__init__(self,ignore_patterns=["*.log"])
+        writeLogTitle.writeLogTitle()
         logging.basicConfig(level=logging.DEBUG,
                 format='%(asctime)s %(filename)s %(levelname)s %(message)s',
                 datefmt='%a, %d %b %Y %H:%M:%S',
                 filename='debug.log',
-                filemode='w')
+                filemode='a')
         console = logging.StreamHandler()
         console.setLevel(logging.INFO)
         formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')

@@ -1,7 +1,6 @@
 import pyautogui
-import time
 #get screen size
-width,height=pyautogui.size()
+print(pyautogui.size())
 #get position
 pos=pyautogui.position()
 #click mouse right key

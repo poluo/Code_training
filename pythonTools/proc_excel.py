@@ -5,7 +5,7 @@ import logging
 
 #检查位号
 def check_pos_mark(table1,table2):
-        #位号比较,ptable1 必须相等
+        '''位号比较,ptable1 必须相等'''
         logging.warning("位号检查，可能有问题的会打印出来，以供检查,")
         logging.warning("还有些小问题，等待完善：")
         ptable1=set(table1.get_col_with_filter(7))
@@ -23,8 +23,9 @@ def check_pos_mark(table1,table2):
                 logging.warning(diff_patern2)
         else:
             logging.warning("似乎没什么问题")
-#检查用量填写
+
 def check_usage(table):
+    '''检查用量填写'''
     num=table.num_row
     logging.warning("用量填写检查，可能有问题的会打印出来，以供检查：")
     for i in range(2,num+1):
@@ -50,19 +51,20 @@ def get_source_type_and_mark_number(source_table):
         else:
             adict={line[1]:line[2]}
         ret[line[0]]=adict
-
-    
     return ret
 
 def check_type_and_mark_number(source_table,target_table):
-    '''获取目标excel中mark_number(标号)对应的type(厂商和型号)，一个标号对应一个type,返回字典'''
+    '''检查标号和厂商、型号是否对应'''
     source_dict=get_source_type_and_mark_number(source_table)
     #logging.debug("source excel:\n")
     #logging.debug(source_dict)
+    logging.warning("标号和厂商、型号检查结果在debug.txt中")
     num=target_table.num_row
     ret_dict={}
-    invalid_list=[]
-    vendor_dict={'NXP':'NXP','PANJ':'PANJIT','VISH':'VISHAY','KOA':'KOA SPEER','NXP':'NXP','OMRO':'OMRON','HF':'HONG FA','PANA':'PANASONIC','NICH':'NICHICON','RUBY':'RUBYCON','EPCO':'EPCOS','ELIT':'ELITE','HPC':'HOLY STONE','TDK':'TDK','AVX':'AVX','KEME':'KEMET','MURA':'MURATA','SAMS':'SAMSUNG','WALS':'WALSIN','YAGE':'YAGEO'}
+    vendor_dict={'NXP':'NXP','PANJ':'PANJIT','VISH':'VISHAY','KOA':'KOA SPEER',
+    'NXP':'NXP','OMRO':'OMRON','HF':'HONG FA','PANA':'PANASONIC','NICH':'NICHICON',
+    'RUBY':'RUBYCON','EPCO':'EPCOS','ELIT':'ELITE','HPC':'HOLY STONE','TDK':'TDK',
+    'AVX':'AVX','KEME':'KEMET','MURA':'MURATA','SAMS':'SAMSUNG','WALS':'WALSIN','YAGE':'YAGEO'}
     for i in range(2,num+1):
         tmp_str=target_table.rd_cell(i,5)
         if '_' in tmp_str and '\\' in tmp_str:
@@ -71,7 +73,7 @@ def check_type_and_mark_number(source_table,target_table):
             try:
                 vendor=vendor_dict[vendor]
             except KeyError as e:
-                print(vendor)
+                logging.warning("{0} 厂商缩写不在vendor_dict内,请补充后重试,此缩写本次将不检查！".format(vendor))
                 continue
             mark_number=target_table.rd_cell(i,8)
             if not isinstance(mark_number,str):
@@ -86,11 +88,9 @@ def check_type_and_mark_number(source_table,target_table):
                                 pass
                             else:
                                 logging.debug("型号可能有问题 {0} {1} {2} ".format(sub_number,vendor,model))
-                                invalid_list.append(mark_number)
                                 break
                         else:
                             logging.debug("制造商可能有问题{0} {1} ".format(sub_number,vendor))
-                            invalid_list.append(mark_number)
                             break
                     else:
                         logging.debug("标号可能有问题 {0} ".format(sub_number))
@@ -105,33 +105,20 @@ def check_type_and_mark_number(source_table,target_table):
                             pass
                         else:
                             logging.debug("型号可能有问题 {0} {1} {2} ".format(mark_number,vendor,model))
-                            invalid_list.append(mark_number)
                     else:
                         logging.debug("制造商可能有问题{0} {1} ".format(mark_number,vendor))
-                        invalid_list.append(mark_number)
                 else:
                     logging.debug("标号可能有问题 {0} ".format(mark_number))
-                    invalid_list.append(mark_number)
-                
-           
         else:
-            #cell is invalid
             pass
-    #logging.debug(invalid_list)
-
+    
 
 def model_is_match(src,tar):
     src=src.replace(' ','')
     tar=tar.replace(' ','')
-    tmp=tar
-    if '^' in tmp:
+    if '^' in tar or '*' in tar:
         tmp=tar.replace('^','.')
-        if None==re.match(tmp,src):
-            return False
-        else:
-            return True
-    elif '*' in tmp:
-        tmp=tar.replace('*','.')
+        tmp=tmp.replace('*','.')
         if None==re.match(tmp,src):
             return False
         else:
@@ -143,7 +130,7 @@ def model_is_match(src,tar):
         else:
             return True
     else:
-        if None==re.match(tmp,src):
+        if None==re.match(tar,src):
             return False
         else:
             return True
@@ -154,34 +141,28 @@ def check_priority(source_table):
     PRIORITY_COL_NUMBER=10
     mark_number_dict={}
     invalid_list=[]
-    mark_number_list=source_table.get_col_no_filter(MARK_NUMVER_COL_NUMBER)
-    for num in mark_number_list:
-        if num=="" or not isinstance(num,str):
-            continue
-        elif "," in num:
-            alist=re.split(',',num)
-            for i in alist:
-                if i in mark_number_dict:
-                    mark_number_dict[i]=mark_number_dict[i]+1
-                else:
-                    mark_number_dict[i]=1
-        else:
-            if num in mark_number_dict:
-                mark_number_dict[num]=mark_number_dict[num]+1
-            else:
-                mark_number_dict[num]=1
-    
-    cal=lambda x:(1+x)*x/2
-    for k,v in mark_number_dict.items():
-        mark_number_dict[k]=cal(mark_number_dict[k])
-    #logging.debug(mark_number_list)
-    #logging.debug('\n')
-    #logging.debug(mark_number_dict)
-
+    count_dict={}
     for i in range(2,source_table.num_row+1):
         tmp_mark=source_table.rd_cell(i,MARK_NUMVER_COL_NUMBER)
         if tmp_mark=="" or not isinstance(tmp_mark,str):
             continue
+        elif "," in tmp_mark:
+            alist=re.split(',',tmp_mark)
+            for j in alist:
+                if j in mark_number_dict:
+                    count_dict[j]=count_dict[j]+1
+                    mark_number_dict[j]=mark_number_dict[j]+count_dict[j]
+                else:
+                    count_dict[j]=1
+                    mark_number_dict[j]=1
+        else:
+            if tmp_mark in mark_number_dict:
+                count_dict[tmp_mark]=count_dict[tmp_mark]+1
+                mark_number_dict[tmp_mark]=mark_number_dict[tmp_mark]+count_dict[tmp_mark]
+            else:
+                count_dict[tmp_mark]=1
+                mark_number_dict[tmp_mark]=1
+                
         tmp_priority=source_table.rd_cell(i,PRIORITY_COL_NUMBER)
         if tmp_priority=="":
             tmp_priority=1
@@ -194,7 +175,9 @@ def check_priority(source_table):
     for k,v in mark_number_dict.items():
         if v!=0:
             invalid_list.append(k)
-    logging.debug(u"优先级检查，可能有错误的:\n{0}".format(invalid_list))
+        
+    logging.warning("优先级检查，可能有错误的:\n{0}".format(invalid_list))
+
 
 #将数组内含逗号的元素分开为多个元素，返回集合
 def proc_list(table):

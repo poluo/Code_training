@@ -85,15 +85,15 @@ def check_type_and_mark_number(source_table,target_table):
                             if model_is_match(model,adict[vendor].upper()):
                                 pass
                             else:
-                                logging.debug("model not in adict{0} {1} {2} ".format(mark_number,model,adict))
+                                logging.debug("型号可能有问题 {0} {1} {2} ".format(sub_number,vendor,model))
                                 invalid_list.append(mark_number)
                                 break
                         else:
-                            logging.debug("vendor not in adict{0} {1} {2} ".format(mark_number,vendor,adict))
+                            logging.debug("制造商可能有问题{0} {1} ".format(sub_number,vendor))
                             invalid_list.append(mark_number)
                             break
                     else:
-                        logging.debug("mark_number not in {0} ".format(mark_number))
+                        logging.debug("标号可能有问题 {0} ".format(sub_number))
                         invalid_list.append(mark_number)
                         break
 
@@ -104,13 +104,13 @@ def check_type_and_mark_number(source_table,target_table):
                         if model_is_match(model,adict[vendor].upper()):
                             pass
                         else:
-                            logging.debug("model not in adict{0} {1} {2} ".format(mark_number,model,adict))
+                            logging.debug("型号可能有问题 {0} {1} {2} ".format(mark_number,vendor,model))
                             invalid_list.append(mark_number)
                     else:
-                        logging.debug("vendor not in adict{0} {1} {2} ".format(mark_number,vendor,adict))
+                        logging.debug("制造商可能有问题{0} {1} ".format(mark_number,vendor))
                         invalid_list.append(mark_number)
                 else:
-                    logging.debug("mark_number not in {0} ".format(mark_number))
+                    logging.debug("标号可能有问题 {0} ".format(mark_number))
                     invalid_list.append(mark_number)
                 
            
@@ -161,10 +161,10 @@ def check_priority(source_table):
         elif "," in num:
             alist=re.split(',',num)
             for i in alist:
-                if num in mark_number_dict:
-                    mark_number_dict[num]=mark_number_dict[num]+1
+                if i in mark_number_dict:
+                    mark_number_dict[i]=mark_number_dict[i]+1
                 else:
-                    mark_number_dict[num]=1
+                    mark_number_dict[i]=1
         else:
             if num in mark_number_dict:
                 mark_number_dict[num]=mark_number_dict[num]+1
@@ -174,18 +174,17 @@ def check_priority(source_table):
     cal=lambda x:(1+x)*x/2
     for k,v in mark_number_dict.items():
         mark_number_dict[k]=cal(mark_number_dict[k])
-    logging.debug(mark_number_list)
-    logging.debug('\n')
-    logging.debug(mark_number_dict)
+    #logging.debug(mark_number_list)
+    #logging.debug('\n')
+    #logging.debug(mark_number_dict)
 
     for i in range(2,source_table.num_row+1):
         tmp_mark=source_table.rd_cell(i,MARK_NUMVER_COL_NUMBER)
-        if tmp_mark=="":
+        if tmp_mark=="" or not isinstance(tmp_mark,str):
             continue
         tmp_priority=source_table.rd_cell(i,PRIORITY_COL_NUMBER)
         if tmp_priority=="":
-            invalid_list.append(tmp_mark)
-            continue
+            tmp_priority=1
         if ',' in tmp_mark:
             tmp_mark=re.split(',',tmp_mark)
             for number in tmp_mark:
@@ -195,7 +194,7 @@ def check_priority(source_table):
     for k,v in mark_number_dict.items():
         if v!=0:
             invalid_list.append(k)
-    logging.debug("those mark number may be wrong:\n{0}".format(invalid_list))
+    logging.debug(u"优先级检查，可能有错误的:\n{0}".format(invalid_list))
 
 #将数组内含逗号的元素分开为多个元素，返回集合
 def proc_list(table):
@@ -246,8 +245,7 @@ if __name__=='__main__':
     logging.getLogger('').addHandler(console)
     source_excel=ProcExcel('1.xlsx','AVL 162003120.00-49')
     target_excel=ProcExcel('A.xlsx','A')
-    #check_pos_mark(source_excel,target_excel)
-    #check_usage(target_excel)
-    #check_type_and_mark_number(source_excel,target_excel)
-    #check_type_and_mark_number(source_excel,target_excel)
+    check_pos_mark(source_excel,target_excel)
+    check_usage(target_excel)
+    check_type_and_mark_number(source_excel,target_excel)
     check_priority(target_excel)

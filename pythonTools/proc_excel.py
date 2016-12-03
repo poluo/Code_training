@@ -3,16 +3,35 @@ import re
 import os
 import logging
 
-#检查位号
+#源表中位号第几列
+SOURCE_TABLE_POS_NUMBER=7
+#源表中制造商Name所在行数，注意型号的name part number 和标号必须在连续的三列
+SOURCE_TABLE_MANU_NAME_NUMBER=5
+#源表从第几行开始
+SOURCE_TABLE_BEGIN_LINE=7
+
+
+#目标表中位号第几列
+TARGET_TABLE_POS_NUMBER=7
+#目标表中用量第几列
+TARGET_TABLE_USAGE_NUMBER=6
+#目标表中型号第几列
+TARGET_TABLE_TYPE_NUMBER=5
+#目标表中优先级第几列
+TARGET_TABLE_PRIORITY_NUMBER=9
+#目标表从第几行开始
+TARGET_TABLE_BEGIN_LINE=2
+
+#检查位号，table1为source ，table2为target
 def check_pos_mark(table1,table2):
         '''位号比较,ptable1 必须相等'''
         logging.warning("位号检查，可能有问题的会打印出来，以供检查,")
         logging.warning("还有些小问题，等待完善：")
-        ptable1=set(table1.get_col_with_filter(7))
-        ptable2=set(table2.get_col_with_filter(8))
-        logging.debug("table1 cell:\n{0}".format(ptable1))
+        ptable1=set(table1.get_col_with_filter(SOURCE_TABLE_POS_NUMBER))
+        ptable2=set(table2.get_col_with_filter(TARGET_TABLE_POS_NUMBER))
+        #logging.debug("table1 cell:\n{0}".format(ptable1))
         ptable2=proc_list(ptable2)
-        logging.debug("table2 cell:\n{0}".format(ptable2))
+        #logging.debug("table2 cell:\n{0}".format(ptable2))
         diff_patern1=ptable1-ptable2&ptable1
         diff_patern2=ptable2-ptable2&ptable1
         if diff_patern1!=set() or diff_patern2!=set():
@@ -24,14 +43,15 @@ def check_pos_mark(table1,table2):
         else:
             logging.warning("似乎没什么问题")
 
+#检查target表中用量的填写 
 def check_usage(table):
     '''检查用量填写'''
     num=table.num_row
     logging.warning("用量填写检查，可能有问题的会打印出来，以供检查：")
     for i in range(2,num+1):
-        val=table.rd_cell(i,8)
-        usage=table.rd_cell(i,7)
-        if isinstance(val,str) and isinstance(usage,float):
+        val=table.rd_cell(i,TARGET_TABLE_POS_NUMBER)
+        usage=table.rd_cell(i,TARGET_TABLE_USAGE_NUMBER)
+        if isinstance(val,str) and isinstance(usage,float) and val!="":
             length=len(re.split(',',val))
             if usage!=length*1000.0:
                 logging.warning("{0}:{1}  ".format(val,usage))    
@@ -41,16 +61,18 @@ def get_source_type_and_mark_number(source_table):
     '''获取源excel文件中mark_number(标号)对应的type(厂商和型号)，一个标号对应多个type，返回字典'''
     num=source_table.num_row
     ret={}
-    for i in range(9,num):
-        line=source_table.get_row(i)[3:6]
-        if line[0]=="":
+    begin=SOURCE_TABLE_MANU_NAME_NUMBER-1
+    end=SOURCE_TABLE_POS_NUMBER
+    for i in range(SOURCE_TABLE_BEGIN_LINE,num):
+        line=source_table.get_row(i)[begin:end]
+        if line[2]=="":
             continue
-        if line[0] in ret:
-            adict=ret[line[0]]
-            adict[line[1]]=line[2]
+        if line[2] in ret:
+            adict=ret[line[2]]
+            adict[line[0]]=line[1]
         else:
-            adict={line[1]:line[2]}
-        ret[line[0]]=adict
+            adict={line[0]:line[1]}
+        ret[line[2]]=adict
     return ret
 
 def check_type_and_mark_number(source_table,target_table):
@@ -65,8 +87,8 @@ def check_type_and_mark_number(source_table,target_table):
     'NXP':'NXP','OMRO':'OMRON','HF':'HONG FA','PANA':'PANASONIC','NICH':'NICHICON',
     'RUBY':'RUBYCON','EPCO':'EPCOS','ELIT':'ELITE','HPC':'HOLY STONE','TDK':'TDK',
     'AVX':'AVX','KEME':'KEMET','MURA':'MURATA','SAMS':'SAMSUNG','WALS':'WALSIN','YAGE':'YAGEO'}
-    for i in range(2,num+1):
-        tmp_str=target_table.rd_cell(i,5)
+    for i in range(TARGET_TABLE_BEGIN_LINE,num+1):
+        tmp_str=target_table.rd_cell(i,TARGET_TABLE_TYPE_NUMBER)
         if '_' in tmp_str and '\\' in tmp_str:
             model=re.split('_',tmp_str).pop()
             vendor=tmp_str[0:tmp_str.index('\\')]
@@ -75,7 +97,7 @@ def check_type_and_mark_number(source_table,target_table):
             except KeyError as e:
                 logging.warning("{0} 厂商缩写不在vendor_dict内,请补充后重试,此缩写本次将不检查！".format(vendor))
                 continue
-            mark_number=target_table.rd_cell(i,8)
+            mark_number=target_table.rd_cell(i,TARGET_TABLE_POS_NUMBER)
             if not isinstance(mark_number,str):
                 continue
             if ',' in mark_number:
@@ -136,14 +158,12 @@ def model_is_match(src,tar):
             return True
 
 
-def check_priority(source_table):
-    MARK_NUMVER_COL_NUMBER=8
-    PRIORITY_COL_NUMBER=10
+def check_priority(target_table):
     mark_number_dict={}
     invalid_list=[]
     count_dict={}
-    for i in range(2,source_table.num_row+1):
-        tmp_mark=source_table.rd_cell(i,MARK_NUMVER_COL_NUMBER)
+    for i in range(TARGET_TABLE_BEGIN_LINE,target_table.num_row+1):
+        tmp_mark=target_table.rd_cell(i,TARGET_TABLE_POS_NUMBER)
         if tmp_mark=="" or not isinstance(tmp_mark,str):
             continue
         elif "," in tmp_mark:
@@ -163,7 +183,7 @@ def check_priority(source_table):
                 count_dict[tmp_mark]=1
                 mark_number_dict[tmp_mark]=1
                 
-        tmp_priority=source_table.rd_cell(i,PRIORITY_COL_NUMBER)
+        tmp_priority=target_table.rd_cell(i,TARGET_TABLE_PRIORITY_NUMBER)
         if tmp_priority=="":
             tmp_priority=1
         if ',' in tmp_mark:
@@ -227,7 +247,7 @@ if __name__=='__main__':
     console.setFormatter(formatter)
     logging.getLogger('').addHandler(console)
     source_excel=ProcExcel('1.xlsx','AVL 162003120.00-49')
-    target_excel=ProcExcel('A.xlsx','A')
+    target_excel=ProcExcel('A.xlsx','B')
     check_pos_mark(source_excel,target_excel)
     check_usage(target_excel)
     check_type_and_mark_number(source_excel,target_excel)

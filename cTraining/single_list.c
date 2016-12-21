@@ -8,25 +8,37 @@ int main(int argc, char const *argv[])
 	SListEntry *tmp_entry;
 
 	SListValue *list_array;
+
+	SListIterator *tmp_iter=malloc(sizeof(SListIterator));
 	
 
 	SList_append(&mylist,10);
 	SList_preappend(&mylist,11);
 	SList_preappend(&mylist,12);
 	SList_preappend(&mylist,13);
-	SList_append(&mylist,9);
 	SList_preappend(&mylist,14);
 	SList_preappend(&mylist,13);
+	SList_print(mylist);
+	SList_iterate(&mylist,tmp_iter);
+	printf("%d\n",SList_iter_next(tmp_iter));
+	printf("%d\n",SList_iter_next(tmp_iter));
+	printf("%d\n",SList_iter_next(tmp_iter));
+	printf("%d\n",SList_iter_next(tmp_iter));
+	printf("%d\n",SList_iter_next(tmp_iter));
+	printf("%d\n",SList_iter_next(tmp_iter));
+	
 
-	SList_free(mylist);
-	printf("%d\n",mylist->data);
+
+
+	//SList_free(mylist);
+	//printf("%d\n",mylist->data);
 	//tmp_entry=SList_next(mylist);
 
 	//printf("%d\n",tmp_entry->data);
 
 	//printf("%d\n",SList_data(tmp_entry));
 
-	//SList_print(mylist);
+	//
 	//getchar();
 	//tmp_entry=SList_nth_entry(mylist,7);
 	//printf("%d\n",SList_remove_entry(&mylist,tmp_entry));
@@ -308,4 +320,57 @@ SListEntry *SList_find_data(SListEntry *list,SListValue value)
 	}
 }
 
+void SList_iterate(SListEntry **list, SListIterator *iter)
+{
+	iter->current=NULL;
+	iter->prev_next=list;
+}
 
+int SList_iter_has_more(SListIterator *iter)
+{
+	if (iter->current == NULL || iter->current != *iter->prev_next) 
+	{
+		return *iter->prev_next != NULL;
+	} 
+	else 
+	{
+		return iter->current->next != NULL;
+	}
+}
+
+SListValue SList_iter_next(SListIterator *iter)
+{
+	if (iter->current==NULL || iter->current != *iter->prev_next)
+	{
+		iter->current=*(iter->prev_next);
+	}
+	else
+	{
+		iter->prev_next=&(iter->current->next);
+		iter->current=iter->current->next;
+	}
+
+	if (iter->current==NULL)
+	{
+		return SLIST_NULL;
+	}
+	else
+	{
+		return iter->current->data;
+	}
+}
+
+void SList_iter_remove(SListIterator *iter)
+{
+	if (iter->current==NULL || iter->current != *iter->prev_next)
+	{
+
+	}
+	else
+	{
+		*iter->prev_next=(iter->current->next);
+		free(iter->current);
+		iter->current=NULL;
+	}
+	
+}

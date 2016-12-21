@@ -48,19 +48,13 @@ SListEntry *SList_find_data(SListEntry *list,SListValue value);
 
 SListEntry *SList_find_data(SListEntry *list,SListValue value);
 
+void SList_iterate(SListEntry **list, SListIterator *iter);
 
+int SList_iter_has_more(SListIterator *iter);
 
+SListValue SList_iter_next(SListIterator *iter);
 
-
-
-
-
-
-
-
-
-
-
+void SList_iter_remove(SListIterator *iter);
 
 
 

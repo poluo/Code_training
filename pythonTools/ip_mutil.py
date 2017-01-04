@@ -12,7 +12,7 @@ NUM=0
 
 #快代理可一次获取多页,注意需睡眠1s
 def get_freeproxy_in_kuaidaili(n):
-    global NUM,PROXY_SOURCE
+    global PROXY_SOURCE
     orginal_url="http://www.kuaidaili.com/free/inha/"+str(n)+"/"
     web=requests.get(orginal_url)
     web.encoding='utf-8'
@@ -33,7 +33,7 @@ def get_freeproxy_in_kuaidaili(n):
  
  #讯代理一次只能获取一页，每10s更新,页面返回为json
 def get_freeproxy_in_xdaili():
-    global NUM,PROXY_SOURCE
+    global PROXY_SOURCE
     orginal_url="http://www.xdaili.cn/ipagent/freeip/getFreeIps?page=1&rows=10"
     web=requests.get(orginal_url)
     web.encoding='utf-8'
@@ -71,7 +71,6 @@ def check_proxy_1(ip):
             page = resp.text
             ip_url = re.search(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', page).group()
             ip_now = re.search(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', ip).group()
-            print(ip_url,ip_now)
 
             if ip_url == ip_now:  # 判断是否是匿名代理
                 print(ip + " 匿名代理")
@@ -98,11 +97,36 @@ def check_proxy_2(ip_proxy):
         resp0=requests.get(url="http://www.baidu.com/", proxies=proxy_host, timeout=20)
         resp1=requests.get(url="http://www.qq.com/", proxies=proxy_host, timeout=20)
         if resp0.status_code == requests.codes.ok and resp1.status_code == requests.codes.ok:
-            print(proxy_host,"ok")
+        	return True
+            # print(proxy_host,"ok")
         else:
-            print(proxy_host,"error")
+        	return False
+            # print(proxy_host,"error")
     except Exception as e:
-        print(e)
+    	return False
+        # print(e)
+
+
+def proxy_main():
+	global PROXY_SOURCE
+	#get proxies
+	#代理数小于3获取新的代理
+	while True:
+		if len(PROXY_SOURCE)<3:
+			time.sleep(2)
+			get_freeproxy_in_xdaili()
+		porxy_info = PROXY_SOURCE.pop()
+		proxy = porxy_info['ip'] + ":" + porxy_info['port']
+		if check_proxy_2(proxy):
+			return {"http":proxy}
+		else:
+			pass	
+
+def main():
+	for i in range(0,50):
+		print(proxy_main())
+		print(i)
+
 
 if __name__ == '__main__':
     
@@ -119,7 +143,7 @@ if __name__ == '__main__':
     logging.getLogger('').addHandler(console)
     logging.getLogger('requests').setLevel(logging.WARNING)
 
-    threads_count=0;
+    '''threads_count=0;
     threads=[]
 
     start=time.clock()
@@ -128,10 +152,11 @@ if __name__ == '__main__':
     new_thread=threading.Thread(get_freeproxy_in_xdaili())
     threads.append(new_thread)
     threads_count=threads_count+1
-    for i in range(1,2):
-        new_thread=threading.Thread(get_freeproxy_in_kuaidaili(i))
-        threads.append(new_thread)
-        threads_count=threads_count+1
+
+    # for i in range(1,2):
+    #     new_thread=threading.Thread(get_freeproxy_in_kuaidaili(i))
+    #     threads.append(new_thread)
+    #     threads_count=threads_count+1
 
     for i in range(0,threads_count):
         threads[i].start()
@@ -140,6 +165,9 @@ if __name__ == '__main__':
         threads[i].join()
 
     print("抓取完成")
+
+    #检查ip是否有效
+
     second_threads=[]
     threads_count=0
     for index,item in enumerate(PROXY_SOURCE,0):
@@ -154,7 +182,10 @@ if __name__ == '__main__':
     for i in range(0,threads_count):
         second_threads[i].join()
 
+    end=time.clock()'''
+    start=time.clock()
+    main()
     end=time.clock()
-    logging.info('cost {0}s'.format(end - start))
+    print('cost {0}s'.format(end - start))
 
   

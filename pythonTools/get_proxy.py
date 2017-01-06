@@ -6,11 +6,17 @@ import time
 import re
 import multiprocessing
 import sched
+from pymongo import *
+
 class Proxy(object):
     """docstring for Proxy"""
-    def __init__(self, return_val,pool_size):
+    def __init__(self, num, pool_size):
         self.pool_size=pool_size
-        self.passed = return_val
+        res=self.db().find()
+        for one in res:
+            self.db().remove(one)
+        self.run_num=num*2
+        self.passed = []
         self.hot = []
         self.cold = []
         self.pending = []
@@ -18,10 +24,21 @@ class Proxy(object):
         self.s2 = sched.scheduler(time.time,time.sleep)
         self.s2.enter(0,1,self.get_freeproxy_in_xdaili)
         self.s2.enter(3,1,self.grasp_proxy)
-    
         self.s2.run()
-    
 
+
+    def db(self):
+        client = MongoClient()
+        client = MongoClient('localhost',27017)
+
+        db = client.proxies
+        collection = db.proxies
+        return collection
+
+    def get_db_content(self):
+        res = self.db().find()
+        for one in res:
+            print(one) 
     def filter(self):
         pool = multiprocessing.Pool(processes=self.pool_size)
 
@@ -42,6 +59,7 @@ class Proxy(object):
         for i in range(len(results)):
             if results[i]==1 and self.pending[i] not in self.passed:
                 self.passed.append(self.pending[i])
+                self.db().insert(self.pending[i])
         print("\npassed len={0}".format(len(self.passed)))
         for i in range(len(self.pending)):
             if self.pending[i] not in self.cold and self.pending[i] not in self.passed:
@@ -51,16 +69,19 @@ class Proxy(object):
     def grasp_proxy(self):
         self.count=self.count+1
         if self.count%2 == 0:
-            tmp=1
-        else:
             tmp=2
+        else:
+            tmp=1
         print(tmp)
         self.get_freeproxy_in_kuaidaili(tmp)
         self.get_freeproxy_in_xicidaili(tmp)
         start=time.time()
         self.filter()
+        # self.get_db_content()
         print("grasp proxy {0}".format(time.time()-start))
-        self.s2.enter(20,1,self.grasp_proxy)
+        if self.run_num:
+            self.s2.enter(20,1,self.grasp_proxy)
+            self.run_num=self.run_num-1
     def validate_proxy(self,ip,index,return_dict):
         headers = {
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -167,9 +188,10 @@ class Proxy(object):
             }
             if data not in self.pending:
                 self.pending.append(data)
-        self.s2.enter(20,1,self.get_freeproxy_in_xdaili)
+        if self.run_num:
+            self.s2.enter(20,1,self.get_freeproxy_in_xdaili)
+            self.run_num=self.run_num-1
     
 if __name__ == '__main__':
 
-    my_proxy=[]
-    test=Proxy(my_proxy,50)
+    test=Proxy(2,50)

@@ -29,12 +29,15 @@ class web(object):
             self.result.append(arg)
 
 
-    def get_overall_info(self,other_url,start,end):
+    def get_overall_info(self,other_url,start,end,mon):
         pool=multiprocessing.Pool(processes=self.pool_size)
         for i in range(start,end):
             url=other_url+str(i)
             print(url)
-            pool.apply_async(self.get_movie_info,args=(url,),callback=self.log_result)
+            if mon==1:
+                pool.apply_async(self.get_movie_info,args=(url,),callback=self.log_result)
+            elif mon==2:
+                pool.apply_async(self.get_movie_info_other,args=(url,),callback=self.log_result)
         pool.close()
         pool.join()
         
@@ -80,7 +83,35 @@ class web(object):
                 #print(tmp_dict)
                 tmp.append(tmp_dict)
             except Exception as e:
-                print("{0} {1}".format(e,tmp))
+                print("{0} {1}".format(e,i))
+                pass
+        return tmp
+    def get_movie_info_other(self,orginal_url):
+        try:
+            web=requests.get(orginal_url, proxies=self.proxy, timeout=400)
+        except Exception as e:
+            self.update_proxy()
+            print("get movie info failed ,{0} {1} url passed".format(orginal_url,e))
+            return
+        if web.status_code!=200:
+            print("get movie info failed ,stauts code don\'t match {0} ".format(orginal_url))
+            return
+        web.encoding='utf-8'
+        soup=BeautifulSoup(web.text,'lxml')
+        tmp=[]
+        movie=soup.select("body > div > div > div > ul.me3.clearfix > li")
+        for i in movie:
+            try:
+                tmp_dict={
+                'offset':i.select('a')[0]['href'],
+                'name':i.select('a')[0]['title'],
+                'score':"unknow"
+                }
+                #print(tmp_dict)
+                tmp.append(tmp_dict)
+            except Exception as e:
+                print("{0} {1}".format(e,i))
+                pass
         return tmp
 
     def get_movie_download_url(self,data):
@@ -101,8 +132,12 @@ class web(object):
         web.encoding='utf-8'
         soup=BeautifulSoup(web.text,'html.parser')
         try:
-            data['download']=soup.find("span",class_="xunlei dlbutton1").find('a')['href']
-            #print(data)
+            i=0
+            tmp=soup.find_all("span",class_="xunlei dlbutton1")
+            for one in tmp:
+                part="download"+one.find('a')['thunderrestitle'].replace('.','')
+                data[part]=one.find('a')['href']
+                i=i+1
             return data
         except AttributeError as e:
             print('AttributeError url={0}'.format(orginal_url))
@@ -123,31 +158,7 @@ class web(object):
         length=length[length.find('p')+1:]
         return int(length)
 
-
-def scrapy_slave_movie():
-    spider = web(35)
-
-    other_url="http://www.80s.tw/movie/list/-----p"
-    length=10 #spider.get_page_length()
-    print("len={0}".format(length))
-    count = 0
-    step = 4
-    while True:
-        spider.get_overall_info(other_url,count,count+step)
-        spider.get_downlink()
-        #my_spider.update_data()
-        spider.reset()
-        count = count + step
-        if count + step > length:
-            break
-
-    spider.get_overall_info(other_url,count,length)
-    spider.get_downlink()
-    #my_spider.update_data()
-    spider.reset()
-
     
 if __name__ == '__main__':
-  
-    
-    scrapy_slave_movie()
+
+    get_movie_download_url()

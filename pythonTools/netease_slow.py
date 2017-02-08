@@ -1,14 +1,15 @@
-# -*- coding: utf-8 -*-  
+# -*- coding: utf-8 -*-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
-import multiprocessing
 import logging
 import json
-import sys
 from bs4 import BeautifulSoup
+from config import HEADER
+from proxy import Proxy
+import os
 
 
 class NeteaseMusic(object):
@@ -18,12 +19,9 @@ class NeteaseMusic(object):
         # path = "C:\Program Files (x86)\Google\Chrome\chromedriver"
         # self.driver = webdriver.Chrome(executable_path=path)
 
-        cap = webdriver.DesiredCapabilities.PHANTOMJS
-        cap["phantomjs.page.settings.loadImages"] = False
-        self.driver = webdriver.PhantomJS(desired_capabilities=cap)
-        self.driver.set_page_load_timeout(5)
         self.offset_list = []
         self.data = []
+        self.proxy_list = []
         '''logging module'''
 
         self.logger = logging.getLogger('mylogger')
@@ -42,20 +40,35 @@ class NeteaseMusic(object):
 
         logging.getLogger("requests").setLevel(logging.WARNING)
 
+        self.proxy_spider = Proxy()
+        self.update_proxy()
+        self.import_proxy()
+        self.update_driver()
+
+    
     def get_detail_info(self, url):
-
-        try:
-            self.driver.get(url)
-            # self.logger.info(self.driver.title)
-            self.driver.switch_to.frame("g_iframe")
-            WebDriverWait(self.driver, 5).until(
-                EC.presence_of_element_located(
-                    (By.CSS_SELECTOR, "#song-list-pre-cache > div > div > table > tbody > tr"))
-            )
-        except Exception as e:
-            self.logger.info("serious error happened {0}".format(e))
-            return
-
+        count = 0
+        while True:
+            try:
+                count += 1
+                self.driver.get(url)
+                # self.logger.info(self.driver.title)
+                self.driver.switch_to.frame("g_iframe")
+                WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located(
+                        (By.CSS_SELECTOR, "#song-list-pre-cache > div > div > table > tbody > tr"))
+                )
+            except Exception as e:
+                self.logger.info("serious error happened {0}".format(e))
+                if len(self.proxy_list) < 1:
+                    self.use_proxy()
+                self.driver.quit()
+                self.update_driver()
+            else:
+                break
+            finally:
+                if count >= 3:
+                    return
         while 1:
             web = self.driver.page_source
             soup = BeautifulSoup(web, 'lxml')
@@ -82,26 +95,69 @@ class NeteaseMusic(object):
                 pass
                 # self.logger.info("{0} {1}".format(e, url))
 
-    def import_offset(self):
-        with open('..\json\\result{0}.json'.format(0), 'r') as fobj:
+    def import_offset(self,index):
+        with open('./json/result{0}.json'.format(index), 'r') as fobj:
             self.offset_list = json.load(fobj)
-        self.offset_list = self.offset_list[0:20]
+        #self.offset_list = self.offset_list[0:20]
         self.logger.info(len(self.offset_list))
         self.logger.info('load json success')
 
+    def use_proxy(self):
+        self.driver.quit()
+        self.update_proxy()
+        self.import_proxy()
+
+    def update_proxy(self):
+        self.proxy_spider.get_proxy()
+        self.logger.info('update proxy')
+        
+    def import_proxy(self):
+        with open('./proxy.json','r') as fobj:
+            self.proxy_list = json.load(fobj)
+
+    def update_driver(self):
+        proxy=self.proxy_list.pop()
+        service_args = [
+        '--proxy={0}:{1}'.format(proxy['ip'],proxy['port']),
+        '--proxy-type={0}'.format(proxy['type']),
+        ]
+        for key, value in enumerate(HEADER):
+            webdriver.DesiredCapabilities.PHANTOMJS['phantomjs.page.customHeaders.{}'.format(key)] = value
+        cap = webdriver.DesiredCapabilities.PHANTOMJS
+        cap["phantomjs.page.settings.loadImages"] = False
+        self.driver = webdriver.PhantomJS(desired_capabilities=cap, service_args=service_args)
+        self.driver.set_page_load_timeout(5)
+        self.logger.info('update driver, left {0} avaliable'.format(len(self.proxy_list)))
     def grasp_main(self):
         base_url = "http://music.163.com"
-        self.import_offset()
-        for offset in self.offset_list:
-            self.get_detail_info(base_url + offset['href'])
-            name = offset['href'][offset['href'].find('=') + 1:]
-            self.data.append(offset)
-            with open('{0}.json'.format(name), 'w') as fobj:
-                json.dump(self.data, fobj)
-                self.data = []
-                self.logger.info('{0} process finish'.format(name))
 
-
+        index = 11
+        while index >1:
+        	self.import_offset(index)
+        	self.logger.info('index = {0}'.format(index))
+	        count = 0 
+	        for offset in self.offset_list:
+	            self.get_detail_info(base_url + offset['href'])
+	            name = offset['href'][offset['href'].find('=') + 1:]
+	            self.data.append(offset)
+	            with open('{0}.json'.format(name), 'w') as fobj:
+	                json.dump(self.data, fobj)
+	                self.data = []
+	                self.logger.info('{0} process finish'.format(name))
+	            count += 1
+	            if len(self.proxy_list) < 1:
+	                self.update_proxy()
+	                self.import_proxy()
+	            if count > 20:
+	                count = 0
+	                self.driver.quit()
+	                self.update_driver()
+	        os.system('rm proxy.json')
+	        os.system('mv *.json ./netease')
+	        os.system('tar -czvf result{0}.tgz ./netease'.format(index)) 
+	        os.system('rm ./netease/*')
+	        self.logger.info('index = {0} compress successed'.format(index))
+	        index -= 1
 def test_json():
     with open('572217819.json', 'r') as fobj:
         offset = json.load(fobj)

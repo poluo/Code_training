@@ -69,13 +69,20 @@ class NeteaseMusic(object):
             finally:
                 if count >= 3:
                     return
+        count = 0
         while 1:
-            web = self.driver.page_source
+            count += 1
+            try:
+                web = self.driver.page_source
+            except Exception as e:
+                self.logger.info("web page source error {0}".format(e))
             soup = BeautifulSoup(web, 'lxml')
             element = soup.select("#song-list-pre-cache > div > div > table > tbody > tr")
             if len(element):
                 break
-
+            if count > 10:
+                break
+          
         for one in element:
             try:
                 tmp_a = one.select("span.txt > a")[0]
@@ -130,34 +137,34 @@ class NeteaseMusic(object):
         self.logger.info('update driver, left {0} avaliable'.format(len(self.proxy_list)))
     def grasp_main(self):
         base_url = "http://music.163.com"
-
+		
         index = 11
-        while index >1:
-        	self.import_offset(index)
-        	self.logger.info('index = {0}'.format(index))
-	        count = 0 
-	        for offset in self.offset_list:
-	            self.get_detail_info(base_url + offset['href'])
-	            name = offset['href'][offset['href'].find('=') + 1:]
-	            self.data.append(offset)
-	            with open('{0}.json'.format(name), 'w') as fobj:
-	                json.dump(self.data, fobj)
-	                self.data = []
-	                self.logger.info('{0} process finish'.format(name))
-	            count += 1
-	            if len(self.proxy_list) < 1:
-	                self.update_proxy()
-	                self.import_proxy()
-	            if count > 20:
-	                count = 0
-	                self.driver.quit()
-	                self.update_driver()
-	        os.system('rm proxy.json')
-	        os.system('mv *.json ./netease')
-	        os.system('tar -czvf result{0}.tgz ./netease'.format(index)) 
-	        os.system('rm ./netease/*')
-	        self.logger.info('index = {0} compress successed'.format(index))
-	        index -= 1
+        while index > 0:
+            self.import_offset(index)
+            self.logger.info('index = {0}'.format(index))
+            count = 0
+            for offset in self.offset_list:
+                name = offset['href'][offset['href'].find('=') + 1:]
+                self.get_detail_info(base_url + offset['href'])
+                self.data.append(offset)
+                with open('{0}.json'.format(name), 'w') as fobj:
+                    json.dump(self.data, fobj)
+                    self.data = []
+                    self.logger.info('3 {0} process finish'.format(name))
+                count += 1
+                if len(self.proxy_list) < 1:
+                    self.update_proxy()
+                    self.import_proxy()
+                if count > 20:
+                    count = 0
+                    self.driver.quit()
+                    self.update_driver()
+            os.system('rm proxy.json')
+            os.system('mv *.json ./netease')
+            os.system('tar -czvf result{0}.tgz ./netease'.format(index)) 
+            os.system('rm ./netease/*')
+            self.logger.info('index = {0} compress successed'.format(index))
+            index -= 1
 def test_json():
     with open('572217819.json', 'r') as fobj:
         offset = json.load(fobj)

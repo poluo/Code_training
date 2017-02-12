@@ -81,7 +81,7 @@ class NeteaseMusic(object):
             if len(element):
                 break
             if count > 10:
-                break
+                return
           
         for one in element:
             try:

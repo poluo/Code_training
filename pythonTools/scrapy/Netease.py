@@ -1,10 +1,13 @@
 import scrapy
+import json
 
 
 class NeteaseSpider(scrapy.Spider):
     name = "Netease_Music_first"
     url_list = []
+    id_list = []
     playlists_overall_info = []
+    count = 0
 
     def start_requests(self):
         urls = [
@@ -30,10 +33,10 @@ class NeteaseSpider(scrapy.Spider):
 
         for url in self.url_list:
             yield scrapy.Request(response.urljoin(url), callback=self.parse_overall_info)
-            break
 
     def closed(self, reason):
-        print(self.url_list)
+        print(len(self.playlists_overall_info) + self.count * 5000)
+        self.export_overall_info()
         print(reason)
 
     def parse_overall_info(self, response):
@@ -53,24 +56,30 @@ class NeteaseSpider(scrapy.Spider):
             except Exception as e:
                 self.log(e)
                 pass
-            self.playlists_overall_info.append(tmp)
-
+            if tmp['href'] not in self.id_list:
+                self.id_list.append(tmp['href'])
+                self.playlists_overall_info.append(tmp)
+        self.export_overall_info()
         try:
             next_url = response.css('#m-pl-pager > div > a::attr(href)')[-1].extract()
         except IndexError:
-            print("IndexError")
+            self.log('IndexError')
             next_url = None
-
-        print(next_url)
-
-        if next_url is not None:
+        if next_url is not None and 'javascript:void(0)' not in next_url:
             next_url = 'http://music.163.com/' + next_url
-            self.log(next_url)
             yield scrapy.Request(response.urljoin(next_url), callback=self.parse_overall_info)
         else:
             pass
 
+    def export_overall_info(self):
+        if len(self.playlists_overall_info) > 5000:
+            with open('result_{0}.json'.format(self.count), 'w') as fobj:
+                json.dump(self.playlists_overall_info, fobj)
+            self.playlists_overall_info = []
+            self.count += 1
+
 
 if __name__ == '__main__':
     from scrapy.cmdline import execute
+
     execute()

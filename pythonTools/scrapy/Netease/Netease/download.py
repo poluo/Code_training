@@ -6,17 +6,49 @@ import logging as log
 from bs4 import BeautifulSoup
 from scrapy.http import HtmlResponse
 
+from .config.proxy_netease import Proxy
+from .config.config import HEADER
+
 
 class CustomsSleniumMiddleware(object):
     def __init__(self):
         # Do not load images
+        self.proxy_spider = Proxy()
+        self.proxy_list = []
+        self.update_proxy()
+        self.count = 0
         cap = webdriver.DesiredCapabilities.PHANTOMJS
         cap["phantomjs.page.settings.loadImages"] = False
         self.driver = webdriver.PhantomJS(desired_capabilities=cap)
         self.driver.set_page_load_timeout(5)
 
+    def update_driver(self):
+        if len(self.proxy_list) == 0:
+            self.update_proxy()
+        proxy = self.proxy_list.pop()
+        service_args = [
+            '--proxy={0}:{1}'.format(proxy['ip'], proxy['port']),
+            '--proxy-type={0}'.format(proxy['type']),
+        ]
+        for key, value in enumerate(HEADER):
+            webdriver.DesiredCapabilities.PHANTOMJS['phantomjs.page.customHeaders.{}'.format(key)] = value
+        cap = webdriver.DesiredCapabilities.PHANTOMJS
+        cap["phantomjs.page.settings.loadImages"] = False
+        self.driver = webdriver.PhantomJS(desired_capabilities=cap, service_args=service_args)
+        self.driver.set_page_load_timeout(5)
+        log.info('update driver, left {0} avaliable'.format(len(self.proxy_list)))
+
+    def update_proxy(self):
+        self.proxy_list = self.proxy_spider.get_proxy()
+        log.info('update proxy')
+
     def process_request(self, request, spider):
         if self.use_selenium(request.url):
+            self.count += 1
+            if self.count > 20:
+                self.update_driver()
+                self.count = 0
+                log.info('update driver')
             return HtmlResponse(request.url, encoding='utf-8', body=self.driver.page_source.encode('utf8'))
 
     def use_selenium(self, url):
@@ -36,6 +68,7 @@ class CustomsSleniumMiddleware(object):
                             (By.CSS_SELECTOR, "#song-list-pre-cache > div > div > table > tbody > tr"))
                     )
                 except Exception as e:
+                    self.update_driver()
                     log.info("selenium serious error happened {0}".format(e))
                 else:
                     if self.source_code_ok():

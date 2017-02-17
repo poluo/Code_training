@@ -7,15 +7,15 @@ class NeteaseSpider(scrapy.Spider):
     data = [] 
     
     def start_requests(self):
-        # with open('./info/result_0.json') as fobj:
-        #     tmp = json.load(fobj)
-        # urls = []
-        # head = "http://music.163.com"
-        # for one in tmp:
-        #     urls.append(head + one['href'])
-        # self.log(len(urls))
-        # urls = urls[:10]
-        urls = ['http://music.163.com/playlist?id=465127626']
+        with open('./info/result_0.json') as fobj:
+            tmp = json.load(fobj)
+        urls = []
+        head = "http://music.163.com"
+        for one in tmp:
+            urls.append(head + one['href'])
+        self.log(len(urls))
+        urls = urls[:50]
+
         for url in urls:
             yield scrapy.Request(url=url+'ajax', callback=self.parse)
 
@@ -36,7 +36,7 @@ class NeteaseSpider(scrapy.Spider):
                     'album_id': tmp_div.css('::attr(href)')[0].extract()
                 }
                 self.data.append(temp_data)
-                self.log(temp_data)
+                print(temp_data)
             except IndexError:
                 pass
             break

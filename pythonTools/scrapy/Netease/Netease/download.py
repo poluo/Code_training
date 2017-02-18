@@ -5,9 +5,43 @@ from selenium.webdriver.support import expected_conditions as EC
 import logging as log
 from bs4 import BeautifulSoup
 from scrapy.http import HtmlResponse
-
 from .config.proxy_netease import Proxy
 from .config.config import HEADER
+
+
+class CustomNormalMiddleware(object):
+    def __init__(self):
+        self.proxy_spider = Proxy()
+        self.proxies_list = []
+        self.proxy = None
+        self.count = 0
+        # every 20 times change a proxy
+        self.threshold = 20
+
+    def process_request(self, request, spider):
+        if self.use_proxy(request.url):
+            request.meta['proxy'] = "http://{0}:{1}".format(self.proxy['ip'], self.proxy['port'])
+            request = request.replace(url=request.url[:request.url.find('proxy')])
+            return request
+        else:
+            return None
+
+    def update_proxy(self):
+        self.count += 1
+        if self.count > 20:
+            self.update_proxy()
+            self.count = 0
+        if len(self.proxies_list) < 1:
+            self.proxies_list = self.proxy_spider.get_proxy()
+            log.info('update proxy')
+        self.proxy = self.proxies_list.pop()
+
+    def use_proxy(self, url):
+        if 'proxy' in url:
+            self.update_proxy()
+            return True
+        else:
+            return False
 
 
 class CustomsSleniumMiddleware(object):

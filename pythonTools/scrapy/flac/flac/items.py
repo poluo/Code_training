@@ -8,7 +8,15 @@
 import scrapy
 
 
-class FlacItem(scrapy.Item):
-    # define the fields for your item here like:
-    # name = scrapy.Field()
-    pass
+class flacItem(scrapy.Item):
+    href = scrapy.Field()
+    song_name = scrapy.Field()
+    singer_name = scrapy.Field()
+    album = scrapy.Field()
+    format = scrapy.Field()
+    size = scrapy.Field()
+    download_link = scrapy.Field()
+    password = scrapy.Field()
+
+
+

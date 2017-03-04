@@ -2,7 +2,7 @@ import logging as log
 import pymongo
 from twisted.web._newclient import ResponseNeverReceived
 from twisted.internet.error import TimeoutError, ConnectionRefusedError, ConnectError
-
+from scrapy.exceptions import CloseSpider
 
 class CustomNormalMiddleware(object):
     DONT_RETRY_ERRORS = (TimeoutError, ConnectionRefusedError, ResponseNeverReceived, ConnectError, ValueError)
@@ -25,16 +25,12 @@ class CustomNormalMiddleware(object):
             self._count += 1
             if self._count > self._threshold:
                 self._count = 0
-                if not request.meta['proxy']:
-                    self.pending_proxy_list.append(request.meta['proxy'])
                 self.update_proxy()
             request.meta['proxy'] = self.proxy
 
     def process_response(self, request, response, spider):
         if response.status != 200:
             log.debug("response status not in 200")
-            if not request.meta['proxy']:
-                self.pending_proxy_list.append(request.meta['proxy'])
             self.update_proxy()
             new_request = request.copy()
             new_request.dont_filter = True
@@ -47,8 +43,6 @@ class CustomNormalMiddleware(object):
         if isinstance(exception, self.DONT_RETRY_ERRORS):
             print(exception)
             log.debug("process_exception")
-            if not request.meta['proxy']:
-                self.pending_proxy_list.append(request.meta['proxy'])
             self.update_proxy()
             new_request = request.copy()
             new_request.meta['proxy'] = self.proxy
@@ -58,18 +52,17 @@ class CustomNormalMiddleware(object):
             log.info('exception retry {}'.format(exception))
 
     def update_proxy(self):
-        self.proxy = self.collection.find_one()
-        self.collection.remove(self.proxy)
-
-        log.debug(self.proxy)
-        if not self.proxy:
+        tmp = self.collection.find_one()
+        self.collection.remove(tmp)
+        if not tmp:
             try:
                 self.proxy = self.pending_proxy_list.pop()
             except IndexError:
                 log.warning('NO PROXY AVAILABLE')
-                self.proxy = None
+                raise CloseSpider('NO PROXY AVAILABLE')
         else:
-            self.proxy = "http://{0}:{1}".format(self.proxy['ip'], self.proxy['port'])
-
-
+            if not self.proxy:
+                self.pending_proxy_list.append(self.proxy)
+            self.proxy = "http://{0}:{1}".format(tmp['ip'], tmp['port'])
+        log.debug(self.proxy)
         log.debug('update proxy')

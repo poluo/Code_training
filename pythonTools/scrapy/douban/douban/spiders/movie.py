@@ -8,14 +8,26 @@ import re
 class Movie250Spider(scrapy.Spider):
     name = 'doubanmovie'
     allowed_domains = ["douban.com"]
-    tag_list = ['%E8%B1%86%E7%93%A3%E9%AB%98%E5%88%86', '%E6%9C%80%E6%96%B0', '%E8%B1%86%E7%93%A3%E9%AB%98%E5%88%86',
-                '%E5%8D%8E%E8%AF%AD', '%E6%AC%A7%E7%BE%8E', '%E9%9F%A9%E5%9B%BD', '%E6%97%A5%E6%9C%AC',
-                '%E5%8A%A8%E4%BD%9C',
-                '%E5%96%9C%E5%89%A7', '%E7%88%B1%E6%83%85', '%E7%A7%91%E5%B9%BB', '%E7%A7%91%E5%B9%BB',
-                '%E6%82%AC%E7%96%91',
-                '%E6%81%90%E6%80%96', '%E6%88%90%E9%95%BF']
+    tag_list = [
+                '%E8%B1%86%E7%93%A3%E9%AB%98%E5%88%86',
+                # '%E6%9C%80%E6%96%B0',
+                # '%E7%83%AD%E9%97%A8',
+                # '%E5%8D%8E%E8%AF%AD',
+                # '%E6%AC%A7%E7%BE%8E',
+                # '%E9%9F%A9%E5%9B%BD',
+                # '%E6%97%A5%E6%9C%AC',
+                # '%E5%8A%A8%E4%BD%9C',
+                # '%E5%96%9C%E5%89%A7',
+                # '%E7%88%B1%E6%83%85',
+                # '%E5%8F%AF%E6%92%AD%E6%94%BE',
+                # '%E7%A7%91%E5%B9%BB',
+                # '%E5%86%B7%E9%97%A8%E4%BD%B3%E7%89%87',
+                # '%E6%82%AC%E7%96%91',
+                # '%E6%81%90%E6%80%96',
+                # '%E6%88%90%E9%95%BF'
+                ]
     start_urls = [
-        "https://movie.douban.com/j/search_subjects?type=movie&tag={0}&sort=time&" \
+        "https://movie.douban.com/j/search_subjects?type=movie&tag={0}&sort=time&"\
         "page_limit=20&page_start={1}".format(tag, num * 20) for tag in tag_list for num in range(0, 1)
         ]
     num = 0
@@ -26,6 +38,8 @@ class Movie250Spider(scrapy.Spider):
                                             'handle_httpstatus_list': [302]}, callback=self.parse)
 
     def parse(self, response):
+        self.log('response from {}'.format(response.url))
+
         try:
             item_list = json.loads(response.text)["subjects"]
         except Exception as e:
@@ -45,14 +59,24 @@ class Movie250Spider(scrapy.Spider):
 
                 self.num += 1
                 next_link = response.urljoin(item['url'] + '?from=subject-page')
-                self.log(next_link)
-                self.log(item)
-                # request = scrapy.Request(next_link, callback=self.parse_subject)
-                # request.meta['item'] = item
-                # yield request
+                self.log("next_link {}".format(next_link))
+                request = scrapy.Request(next_link, callback=self.parse_subject)
+                request.meta['item'] = item
+                request.meta['dont_redirect'] = True
+                request.meta['handle_httpstatus_list'] = [302]
+                yield request
 
     def parse_subject(self, response):
-        item = response.meta['item']
+        self.log('response from {}'.format(response.url))
+        try:
+            item = response.meta['item']
+        except KeyError:
+            item = doubanmovieItem()
+            item['name'] = response.css('#content > h1 > span:nth-child(1)::text').extract_first()
+            item['score'] = response.css('#interest_sectl > div > div.rating_self.clearfix > strong::text').extract_first()
+            item['url'] = response.url
+            item['cover'] = response.css('#mainpic > a > img::attr(src)').extract_first()
+            item['playable'] = 'unknown'
         info = response.css('#info')
         item['release_time'] = info.css('span[property=\'v:initialReleaseDate\']::attr(content)').extract()
 
@@ -64,14 +88,18 @@ class Movie250Spider(scrapy.Spider):
         item['tag'] = info.css('span[property=\'v:genre\']::text').extract()
         item['actress_list'] = info.css('a[rel=\'v:starring\']::attr(href)').extract()
         item['rate_num'] = response.css('span[property=\'v:votes\']::text').extract_first()
-        self.log('response from {}'.format(response.url))
         yield item
         for url in item['actress_list']:
-            next_link = response.urljoin(url)
+            next_link = response.urljoin('https://movie.douban.com'+url)
+            self.log("next_link {}".format('https://movie.douban.com'+url))
             new_request = scrapy.Request(next_link, callback=self.parse_actress)
+            new_request.meta['dont_redirect'] = True
+            new_request.meta['handle_httpstatus_list'] = [302]
             yield new_request
 
     def parse_actress(self, response):
+        self.log('response from {}'.format(response.url))
+
         item = doubanactressItem()
         item['url'] = response.url
         item['name'] = response.css('#content > h1::text').extract_first()
@@ -87,8 +115,17 @@ class Movie250Spider(scrapy.Spider):
         info_list = response.css('div.info')
         for one in info_list:
             tmp = one.css('a::attr(href)').extract_first()
-            if 'subject' in tmp:
+            if tmp and 'subject' in tmp:
                 item['movie_list'].append(tmp)
+        yield item
+
+        for url in item['movie_list']:
+            next_link = url
+            self.log("next_link {}".format(url))
+            new_request = scrapy.Request(next_link, callback=self.parse_subject)
+            new_request.meta['dont_redirect'] = True
+            new_request.meta['handle_httpstatus_list'] = [302]
+            yield new_request
 
         self.log('response from {} \n'.format(response.url))
 

@@ -1,36 +1,33 @@
 import logging as log
-import pymongo
 from twisted.web._newclient import ResponseNeverReceived
-from twisted.internet.error import TimeoutError, ConnectionRefusedError, ConnectError
+from twisted.internet.error import TimeoutError, ConnectionRefusedError, ConnectError, ConnectionLost
 from scrapy.exceptions import CloseSpider
+import requests
+import random
+import string
+
 
 class CustomNormalMiddleware(object):
-    DONT_RETRY_ERRORS = (TimeoutError, ConnectionRefusedError, ResponseNeverReceived, ConnectError, ValueError)
+    DONT_RETRY_ERRORS = (
+    TimeoutError, ConnectionRefusedError, ResponseNeverReceived, ConnectError, ConnectionLost, ValueError)
 
     def __init__(self):
-        url = 'mongodb://poluo:poluo123@115.28.36.253:27017/proxy'
-        self.client = pymongo.MongoClient(url)
-        self.db = self.client.proxy
-        self.collection = self.db.proxy_list
-        self.pending_proxy_list = []
+        self.proxy_list = []
         self.proxy = None
-        self._count = 0
+        self._count = 501
         # every 200 times change a proxy
-        self._threshold = 200
+        self._threshold = 20
         self.update_proxy()
 
     def process_request(self, request, spider):
         log.debug('downloadmiddle process')
-        if 'douban' in request.url:
-            self._count += 1
-            if self._count > self._threshold:
-                self._count = 0
-                self.update_proxy()
+        if 'douban' in request.url:   
             request.meta['proxy'] = self.proxy
+            request.cookies['bid'] = self.cookies
 
     def process_response(self, request, response, spider):
         if response.status != 200:
-            log.debug("response status not in 200")
+            log.debug("response status not in 200 {}".format(response.status))
             self.update_proxy()
             new_request = request.copy()
             new_request.dont_filter = True
@@ -41,8 +38,7 @@ class CustomNormalMiddleware(object):
 
     def process_exception(self, request, exception, spider):
         if isinstance(exception, self.DONT_RETRY_ERRORS):
-            print(exception)
-            log.debug("process_exception")
+            log.debug("exception {}".format(exception))
             self.update_proxy()
             new_request = request.copy()
             new_request.meta['proxy'] = self.proxy
@@ -52,17 +48,47 @@ class CustomNormalMiddleware(object):
             log.info('exception retry {}'.format(exception))
 
     def update_proxy(self):
-        tmp = self.collection.find_one()
-        self.collection.remove(tmp)
-        if not tmp:
+        self._count += 1
+        log.info(self._count)
+        self.cookies ="{}".format("".join(random.sample(string.ascii_letters + string.digits, 11)))
+        log.info('cookies = {}'.format(self.cookies))
+        if self._count > self._threshold:
+            self._count = 0
+            self.validte()
+
+    def validte(self):
+        while True:
             try:
-                self.proxy = self.pending_proxy_list.pop()
-            except IndexError:
-                log.warning('NO PROXY AVAILABLE')
-                raise CloseSpider('NO PROXY AVAILABLE')
-        else:
-            if not self.proxy:
-                self.pending_proxy_list.append(self.proxy)
+                tmp = self.proxy_list.pop()
+            except IndexError as e:
+                self.get_proxy_in_daxiangdaili()
+                tmp = self.proxy_list.pop()
             self.proxy = "http://{0}:{1}".format(tmp['ip'], tmp['port'])
-        log.debug(self.proxy)
-        log.debug('update proxy')
+            try:
+                r = requests.get('https://www.baidu.com/', proxies=self.proxy, timeout=10)
+                if r.status_code == requests.codes.ok:
+                    log.info('validate {}'.format(self.proxy))
+                    break
+                else:
+                    log.info('not validate {}'.format(self.proxy))
+            except Exception as e:
+                log.info("not validate{} {}".format(self.proxy,e))
+            
+
+    def get_proxy_in_daxiangdaili(self):
+        tid = '555947027942665'
+        num = 20
+        url = 'http://tvp.daxiangdaili.com/ip/?tid={}&num={}&category=2&delay=5&protocol=http'.format(tid, num)
+        result = requests.get(url)
+        result = result.text.split('\n')
+        for one in result:
+            if one != '':
+                ip = {
+                    'ip': one.split(':')[0].strip(),
+                    'port': one.split(':')[1].strip()
+                }
+                self.proxy_list.append(ip)
+        if len(self.proxy_list) == 0:
+            log.warning('NO PROXY AVAILABLE')
+        else:
+            log.info('update proxy')

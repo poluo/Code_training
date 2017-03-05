@@ -10,21 +10,21 @@ class Movie250Spider(scrapy.Spider):
     allowed_domains = ["douban.com"]
     tag_list = [
                 '%E8%B1%86%E7%93%A3%E9%AB%98%E5%88%86',
-                # '%E6%9C%80%E6%96%B0',
-                # '%E7%83%AD%E9%97%A8',
-                # '%E5%8D%8E%E8%AF%AD',
-                # '%E6%AC%A7%E7%BE%8E',
-                # '%E9%9F%A9%E5%9B%BD',
-                # '%E6%97%A5%E6%9C%AC',
-                # '%E5%8A%A8%E4%BD%9C',
-                # '%E5%96%9C%E5%89%A7',
-                # '%E7%88%B1%E6%83%85',
-                # '%E5%8F%AF%E6%92%AD%E6%94%BE',
-                # '%E7%A7%91%E5%B9%BB',
-                # '%E5%86%B7%E9%97%A8%E4%BD%B3%E7%89%87',
-                # '%E6%82%AC%E7%96%91',
-                # '%E6%81%90%E6%80%96',
-                # '%E6%88%90%E9%95%BF'
+                '%E6%9C%80%E6%96%B0',
+                '%E7%83%AD%E9%97%A8',
+                '%E5%8D%8E%E8%AF%AD',
+                '%E6%AC%A7%E7%BE%8E',
+                '%E9%9F%A9%E5%9B%BD',
+                '%E6%97%A5%E6%9C%AC',
+                '%E5%8A%A8%E4%BD%9C',
+                '%E5%96%9C%E5%89%A7',
+                '%E7%88%B1%E6%83%85',
+                '%E5%8F%AF%E6%92%AD%E6%94%BE',
+                '%E7%A7%91%E5%B9%BB',
+                '%E5%86%B7%E9%97%A8%E4%BD%B3%E7%89%87',
+                '%E6%82%AC%E7%96%91',
+                '%E6%81%90%E6%80%96',
+                '%E6%88%90%E9%95%BF'
                 ]
     start_urls = [
         "https://movie.douban.com/j/search_subjects?type=movie&tag={0}&sort=time&"\
@@ -83,8 +83,11 @@ class Movie250Spider(scrapy.Spider):
         item['duration'] = info.css('span[property=\'v:runtime\']::text').extract_first()
         item['country'] = \
         re.findall('<span class="pl">制片国家/地区:</span>.+<br/>', response.text)[0].split('>')[-2].split('<')[0]
-        item['language'] = re.findall('<span class="pl">语言:</span>.+<br/>', response.text)[0].split('>')[-2].split('<')[
-            0]
+        try:
+            item['language'] = \
+            re.findall('<span class="pl">语言:</span>.+<br/>', response.text)[0].split('>')[-2].split('<')[0]
+        except IndexError:
+            item['language'] = 'unknown'
         item['tag'] = info.css('span[property=\'v:genre\']::text').extract()
         item['actress_list'] = info.css('a[rel=\'v:starring\']::attr(href)').extract()
         item['rate_num'] = response.css('span[property=\'v:votes\']::text').extract_first()
@@ -118,14 +121,14 @@ class Movie250Spider(scrapy.Spider):
             if tmp and 'subject' in tmp:
                 item['movie_list'].append(tmp)
         yield item
-
-        for url in item['movie_list']:
-            next_link = url
-            self.log("next_link {}".format(url))
-            new_request = scrapy.Request(next_link, callback=self.parse_subject)
-            new_request.meta['dont_redirect'] = True
-            new_request.meta['handle_httpstatus_list'] = [302]
-            yield new_request
+        #
+        # for url in item['movie_list']:
+        #     next_link = url
+        #     self.log("next_link {}".format(url))
+        #     new_request = scrapy.Request(next_link, callback=self.parse_subject)
+        #     new_request.meta['dont_redirect'] = True
+        #     new_request.meta['handle_httpstatus_list'] = [302]
+        #     yield new_request
 
         self.log('response from {} \n'.format(response.url))
 

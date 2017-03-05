@@ -54,7 +54,9 @@ ROBOTSTXT_OBEY = False
 # Enable or disable downloader middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
-   'douban.downloadmiddle.CustomNormalMiddleware': 543,
+    'scrapy.downloadermiddlewares.downloadtimeout.DownloadTimeoutMiddleware': 350,
+    'scrapy.contrib.downloadermiddleware.retry.RetryMiddleware': 351,
+    'douban.downloadmiddle.CustomNormalMiddleware': 999,
 }
 
 # Enable or disable extensions

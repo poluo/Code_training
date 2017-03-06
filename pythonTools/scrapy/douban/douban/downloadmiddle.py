@@ -1,6 +1,7 @@
 import logging as log
 from twisted.web._newclient import ResponseNeverReceived
 from twisted.internet.error import TimeoutError, ConnectionRefusedError, ConnectError, ConnectionLost
+from scrapy.core.downloader.handlers.http11 import TunnelError
 from scrapy.exceptions import CloseSpider
 import requests
 import random
@@ -9,7 +10,7 @@ import string
 
 class CustomNormalMiddleware(object):
     DONT_RETRY_ERRORS = (
-    TimeoutError, ConnectionRefusedError, ResponseNeverReceived, ConnectError, ConnectionLost, ValueError)
+    TimeoutError, ConnectionRefusedError, ResponseNeverReceived, ConnectError, ConnectionLost, TunnelError, ValueError)
 
     def __init__(self):
         self.proxy_list = []
@@ -63,22 +64,22 @@ class CustomNormalMiddleware(object):
             except IndexError as e:
                 self.get_proxy_in_daxiangdaili()
                 tmp = self.proxy_list.pop()
-            self.proxy = "http://{0}:{1}".format(tmp['ip'], tmp['port'])
+            self.proxy = "https://{0}:{1}".format(tmp['ip'], tmp['port'])
             try:
-                r = requests.get('https://www.baidu.com/', proxies=self.proxy, timeout=10)
+                r = requests.get('https://www.baidu.com', proxies={"https":self.proxy}, timeout=10)
                 if r.status_code == requests.codes.ok:
                     log.info('validate {}'.format(self.proxy))
                     break
                 else:
                     log.info('not validate {}'.format(self.proxy))
             except Exception as e:
-                log.info("not validate{} {}".format(self.proxy,e))
+                log.info("not validate {} {}".format(self.proxy,e))
             
 
     def get_proxy_in_daxiangdaili(self):
         tid = '555947027942665'
-        num = 20
-        url = 'http://tvp.daxiangdaili.com/ip/?tid={}&num={}&category=2&delay=5&protocol=http'.format(tid, num)
+        num = 10
+        url = 'http://tvp.daxiangdaili.com/ip/?tid={}&num={}&category=2&delay=5&protocol=https&ports=80,8080,3128'.format(tid, num)
         result = requests.get(url)
         result = result.text.split('\n')
         for one in result:

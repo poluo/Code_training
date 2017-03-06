@@ -24,7 +24,8 @@ class DoubanPipeline(object):
             self.movie_num += 1
             if self.movie_num > 1000:
                 self.fobj_movie.close()
-                self.movie_count += 1
+                self.movie_count +=1
+                self.movie_num = 0
                 self.fobj_movie = open('movie_{}.json'.format(self.movie_count), 'w')
             self.fobj_movie.write(line)
         elif 'celebrity' in item['url']:
@@ -32,6 +33,7 @@ class DoubanPipeline(object):
             if self.actress_num > 1000:
                 self.fobj_actress.close()
                 self.actress_count += 1
+                self.actress_num = 0
                 self.fobj_actress = open('actress_{}.json'.format(self.actress_count), 'w')
             self.fobj_actress.write(line)
         else:

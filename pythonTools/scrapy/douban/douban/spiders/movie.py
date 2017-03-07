@@ -28,10 +28,10 @@ class Movie250Spider(scrapy.Spider):
                 ]
     start_urls = [
         "https://movie.douban.com/j/search_subjects?type=movie&tag={0}&sort=time&"\
-        "page_limit=20&page_start={1}".format(tag, num * 20) for tag in tag_list for num in range(0, 2)
+        "page_limit=20&page_start={1}".format(tag, num * 20) for tag in tag_list for num in range(0, 23)
         ]
     num = 0
-
+ 
     def start_requests(self):
         for url in self.start_urls:
             yield scrapy.Request(url, meta={'dont_redirect': True,
@@ -122,14 +122,14 @@ class Movie250Spider(scrapy.Spider):
                 item['movie_list'].append(tmp)
         yield item
         
-        for url in item['movie_list']:
+        '''for url in item['movie_list']:
             next_link = url
             self.log("next_link {}".format(url))
             new_request = scrapy.Request(next_link, callback=self.parse_subject)
             new_request.meta['dont_redirect'] = True
             new_request.meta['handle_httpstatus_list'] = [302]
             yield new_request
-
+        '''
         self.log('response from {} \n'.format(response.url))
 
     def closed(self, reason):

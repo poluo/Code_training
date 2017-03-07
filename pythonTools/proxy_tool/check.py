@@ -1,9 +1,22 @@
+"""
+Usage:
+  check.py target <target> [--timeout=<seconds>] process <process_num> thread <thread_num>
+  check.py (-h | --help)
+  check.py --version
+
+Options:
+  -h --help     Show this screen.
+  --version     Show version.
+
+"""
+
 import logging
 import sys
 from pymongo import MongoClient
 import json
 from validate import Validator
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
+from docopt import docopt
 
 def clean():
     logging.info('start clean')
@@ -21,13 +34,16 @@ def db(result):
     for one in result:
         collection.insert(one)
     logging.info('db insert finish')
-def check():
+
+def main():
+    arguments = docopt(__doc__,version = '1.0.0')
+    target = arguments['<target>']
+    timeout = int(arguments['--timeout'])
+    thread_num = int(arguments['<thread_num>'])
+    process_num = int(arguments['<process_num>'])
+    print('{} {} {} {}'.format(target,timeout,thread_num,process_num))
+    validator = Validator(target,timeout,process_num,thread_num)
     ip_all=[]
-    with open('proxy.json','r',encoding='utf8') as fobj:
-        for one in fobj:
-            ip=json.loads(one)
-            ip_all.append(ip)
-    validator = Validator("https://www.douban.com/", 10, 4, 200)
     logging.info("Load proxy ip, total: %s", len(ip_all))
     result_tmp = validator.run(ip_all)
     result=[]
@@ -42,4 +58,4 @@ def check():
     return  result
 
 if __name__ == '__main__':
-    result=check()
+    main()

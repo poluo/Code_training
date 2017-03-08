@@ -122,14 +122,13 @@ class Movie250Spider(scrapy.Spider):
                 item['movie_list'].append(tmp)
         yield item
         
-        '''for url in item['movie_list']:
+        for url in item['movie_list']:
             next_link = url
             self.log("next_link {}".format(url))
             new_request = scrapy.Request(next_link, callback=self.parse_subject)
             new_request.meta['dont_redirect'] = True
             new_request.meta['handle_httpstatus_list'] = [302]
             yield new_request
-        '''
         self.log('response from {} \n'.format(response.url))
 
     def closed(self, reason):

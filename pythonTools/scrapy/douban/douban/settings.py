@@ -10,6 +10,8 @@
 #     http://scrapy.readthedocs.org/en/latest/topics/spider-middleware.html
 from douban.agents import AGENTS_ALL
 import random
+
+
 BOT_NAME = 'douban'
 
 SPIDER_MODULES = ['douban.spiders']
@@ -17,7 +19,7 @@ NEWSPIDER_MODULE = 'douban.spiders'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-USER_AGENT = random.choice(AGENTS_ALL)
+# USER_AGENT = random.choice(AGENTS_ALL)
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = False
@@ -91,5 +93,5 @@ ITEM_PIPELINES = {
 #HTTPCACHE_DIR = 'httpcache'
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
-DOWNLOAD_TIMEOUT = 15
-DOWNLOAD_DELAY = 0.3
+DOWNLOAD_TIMEOUT = 20
+DOWNLOAD_DELAY = 1

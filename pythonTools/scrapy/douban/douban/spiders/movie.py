@@ -28,7 +28,7 @@ class Movie250Spider(scrapy.Spider):
                 ]
     start_urls = [
         "https://movie.douban.com/j/search_subjects?type=movie&tag={0}&sort=time&"\
-        "page_limit=20&page_start={1}".format(tag, num * 20) for tag in tag_list for num in range(0, 23)
+        "page_limit=20&page_start={1}".format(tag, num * 20) for tag in tag_list for num in range(0, 2)
         ]
     num = 0
  

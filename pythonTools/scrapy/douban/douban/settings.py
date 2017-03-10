@@ -70,7 +70,7 @@ DOWNLOADER_MIDDLEWARES = {
 # Configure item pipelines
 # See http://scrapy.readthedocs.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-    'douban.pipelines.DoubanPipeline': 300,
+    'douban.pipelines.MongoDBDoubanPipline': 300,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
@@ -94,4 +94,4 @@ ITEM_PIPELINES = {
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 DOWNLOAD_TIMEOUT = 20
-DOWNLOAD_DELAY = 1
+DOWNLOAD_DELAY = 1 

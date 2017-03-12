@@ -14,7 +14,7 @@ class CustomNormalMiddleware(object):
     SERVER_ERRORS = (TimeoutError, ConnectionRefusedError)
 
     def __init__(self):
-        self.client = pymongo.MongoClient('mongodb://poluo:poluo123@115.28.36.253:27017/proxy')
+        self.client = pymongo.MongoClient('mongodb://poluo:poluo123@ip:27017/proxy')
         self.db = self.client.proxy
         self.collection = self.db.proxy_list
         self.db_cycle_time = 60

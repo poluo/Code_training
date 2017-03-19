@@ -10,7 +10,7 @@ from scrapy.exceptions import DropItem
 
 class JasonAmazonPipeline(object):
     def open_spider(self, spider):
-        self.file = open('book.json', 'w')
+        self.file = open('book.json', 'w', encoding='utf-8')
         self.used_list = []
 
     def process_item(self, item, spider):

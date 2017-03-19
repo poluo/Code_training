@@ -16,10 +16,10 @@ NEWSPIDER_MODULE = 'amazon.spiders'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36'
+# USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36'
 
 # Obey robots.txt rules
-ROBOTSTXT_OBEY = True
+ROBOTSTXT_OBEY =True
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 #CONCURRENT_REQUESTS = 32
@@ -27,7 +27,7 @@ ROBOTSTXT_OBEY = True
 # Configure a delay for requests for the same website (default: 0)
 # See http://scrapy.readthedocs.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
-#DOWNLOAD_DELAY = 3
+# DOWNLOAD_DELAY = 0.1
 # The download delay setting will honor only one of:
 #CONCURRENT_REQUESTS_PER_DOMAIN = 16
 #CONCURRENT_REQUESTS_PER_IP = 16
@@ -46,15 +46,15 @@ ROBOTSTXT_OBEY = True
 
 # Enable or disable spider middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/spider-middleware.html
-#SPIDER_MIDDLEWARES = {
-#    'amazon.middlewares.MyCustomSpiderMiddleware': 543,
-#}
+# SPIDER_MIDDLEWARES = {
+#    'amazon.middlewares.CustomNormalMiddleware': 543,
+# }
 
 # Enable or disable downloader middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
-#DOWNLOADER_MIDDLEWARES = {
-#    'amazon.middlewares.MyCustomDownloaderMiddleware': 543,
-#}
+DOWNLOADER_MIDDLEWARES = {
+   'amazon.downloadmiddle.CustomNormalMiddleware': 543,
+}
 
 # Enable or disable extensions
 # See http://scrapy.readthedocs.org/en/latest/topics/extensions.html
@@ -64,10 +64,9 @@ ROBOTSTXT_OBEY = True
 
 # Configure item pipelines
 # See http://scrapy.readthedocs.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'amazon.pipelines.SomePipeline': 300,
-#}
-
+ITEM_PIPELINES = {
+   'amazon.pipelines.JasonAmazonPipeline': 300,
+}
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See http://doc.scrapy.org/en/latest/topics/autothrottle.html
 #AUTOTHROTTLE_ENABLED = True
@@ -88,3 +87,40 @@ ROBOTSTXT_OBEY = True
 #HTTPCACHE_DIR = 'httpcache'
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
+# ------------scrapy-redis 分布式爬虫相关设置-----------------
+# 修改scrapy默认的调度器为scrapy重写的调度器 启动从reids缓存读取队列调度爬虫
+DUPEFILTER_CLASS = "scrapy_redis.dupefilter.RFPDupeFilter"
+
+SCHEDULER = "scrapy_redis.scheduler.Scheduler"
+
+# 调度状态持久化，不清理redis缓存，允许暂停/启动爬虫
+SCHEDULER_PERSIST = True
+
+# 请求调度使用优先队列（默认)
+SCHEDULER_QUEUE_CLASS = 'scrapy_redis.queue.SpiderPriorityQueue'
+
+# 请求调度使用FIFO队列
+# SCHEDULER_QUEUE_CLASS = 'scrapy_redis.queue.SpiderQueue'
+
+# 请求调度使用LIFO队列
+# SCHEDULER_QUEUE_CLASS = 'scrapy_redis.queue.SpiderStack'
+
+# 最大的空闲时间，避免分布式爬取得情况下爬虫被关闭
+# 此设置只适用于SpiderQueue和SpiderStack
+# 也是爬虫第一次启动时的等待时间（应为队列是空的）
+# SCHEDULER_IDLE_BEFORE_CLOSE = 10
+
+# 存储爬取到的item，一定要在所有的pipeline最后，即设定对应的数字大于其他pipeline
+ITEM_PIPELINES = {
+    'redis_douban.pipelines.MongoDBDoubanPipline': 280,
+    'scrapy_redis.pipelines.RedisPipeline': 300
+}
+
+# 指定redis的地址和端口(可选，程序将使用默认的地址localhost:6379)
+# REDIS_HOST = 'localhost'
+# REDIS_PORT = 6378
+
+# 声明redis的url地址（可选）
+# 如果设置了这一项，则程序会有限采用此项设置，忽略REDIS_HOST 和 REDIS_PORT的设置
+REDIS_URL = 'redis://admin:poluo123@127.0.0.1:6379'
+# ------------end scrapy-redis---------------------------

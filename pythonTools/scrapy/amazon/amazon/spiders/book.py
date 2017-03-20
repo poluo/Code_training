@@ -3,24 +3,46 @@ from scrapy.spider import CrawlSpider, Rule
 from scrapy.linkextractors import LinkExtractor
 from amazon.items import AmazonItem
 from bs4 import BeautifulSoup
+from scrapy_redis.spiders import RedisCrawlSpider
 
 
-class BookSpider(CrawlSpider):
+class BookSpider(RedisCrawlSpider):
     name = "book"
     allowed_domains = ["amazon.cn"]
     redis_key = 'book:start_urls'
-    start_urls = (
-        'https://www.amazon.cn/%E5%9B%BE%E4%B9%A6/b/ref=sa_menu_top_books_l1?ie=UTF8&node=658390051',
-    )
-    contents_url = ('/s/ref=lp_\d{9}_nr_n.+', '/s/ref=lp_\d{9}_pg_\d.+')
-    books_url = ('/gp/product/.+', '.*/dp/.+')
+    # start_urls = (
+    #     # 'https://www.amazon.cn/%E5%9B%BE%E4%B9%A6/b/ref=sa_menu_top_books_l1?ie=UTF8&node=658390051',
+    #     'https://www.amazon.cn/s/ref=lp_658508051_ex_n_1?rh=n%3A658390051%2Cn%3A%21658391051%2Cn%3A658394051&bbn=658394051&ie=UTF8&qid=1490017322',
+    # )
+    contents_url = ('.*/s/ref=lp_\d{9}_nr_n.+',
+                    '.*/s/ref=lp_\d{9}_pg_\d.+', '.*/s/ref=is_p._\d.+', '.*/s/ref=sr_pg_\d.+')
+    contents_css = ('#refinements > div.categoryRefinementsSection > ul > li > a', '#pagn > span.pagnLink > a')
+    books_css = (
+        'li.s-result-item.celwidget  > div > div > div > div.a-fixed-left-grid-col.a-col-right > div.a-row.a-spacing-small > div:nth-child(1) > a')
+    books_url = ('/gp/product/.+books.+', '.*/dp/.+books.+')
     base_url = 'https://www.amazon.cn'
     rules = [
-        Rule(LinkExtractor(allow=contents_url), callback='parse_contents', follow=True),
-        Rule(LinkExtractor(allow=books_url, deny='.+/uedata/unsticky/.+'), callback='parse_book', follow=True),
+        Rule(LinkExtractor(allow=contents_url, restrict_css=contents_css), callback='parse_contents', follow=True,
+             process_links='link_filtering'),
+        Rule(LinkExtractor(allow=books_url, deny='.+/uedata/unsticky/.+', restrict_css=books_css),
+             callback='parse_book', follow=True),
     ]
     contents_count = 0
     books_count = 0
+    links_used = []
+
+    def link_filtering(self, links):
+        ret = []
+        for one in links:
+            tmp = one.url.split('&')[0]
+            if 'books' in tmp:
+                tmp = tmp[:tmp.find('/ref')]
+            if tmp not in self.links_used:
+                self.links_used.append(tmp)
+                ret.append(one)
+            else:
+                pass
+        return ret
 
     def parse_contents(self, response):
         self.contents_count += 1
@@ -89,9 +111,12 @@ class BookSpider(CrawlSpider):
         tmp = response.css('#tmmSwatches > ul > li.swatchElement.selected')
         my_item['price'] = ''
         for one in tmp:
-            my_item['price'] += '{}:{} /'.format(
-                one.css('span > span > span > a > span::text').extract_first().strip(),
-                one.css('span > span > span > a > span > span::text').extract_first().strip())
+            try:
+                my_item['price'] += '{}:{} /'.format(
+                    one.css('span > span > span > a > span::text').extract_first().strip(),
+                    one.css('span > span > span > a > span > span::text').extract_first().strip())
+            except AttributeError:
+                pass
         return my_item
 
     def closed(self, reason):

@@ -9,6 +9,7 @@ import time
 class CustomNormalMiddleware(object):
     def __init__(self):
         self.used_set = []
+        self.setting=[]
         self.cookies = {'session-id': '452-1177854-7355524', 'session-id-time': '2082729601l',
                         'ubid-acbcn': '454-5630272-1938337',
                         'session-token': 'RxkMPtwxH4lKEpmuxd5JzA1Lw02mK/ezCCUV8ltabW4BrnabsNsbACKIh4y8UAf6POVih70SBWvx0WxgHxqKNEVqKu83YGvnyqEpnPFxdSgpUUWX6eGqKqFBILeLGgM0dse+fLCBpXwE6a6UNNE1Uzl5Vcj3H9zHLRpBDNxTuhg3pHKbn48u0hHqBY471/Z5fK+Z1OERrWMgVwfuBYGhI79SahBH7MlRx+/s8npIW6GCfFRxTq/vnw==',
@@ -38,9 +39,15 @@ class CustomNormalMiddleware(object):
             request.headers['Connection'] = 'keep-alive'
             request.headers['Host'] = 'www.amazon.cn'
             request.cookies = self.cookies
-            request.dont_filter = True
         else:
             raise IgnoreRequest
+            
+    def produce_setting(self):
+        pass
+        '''from amazon.setting import COOKIES
+        from amazon.setting import AGENTS
+        for one in COOKIES:
+            self.setting.append({cookie:one,agent:AGENTS.pop()})'''
 
     def process_response(self, request, response, spider):
         # print('response headers {}'.format(response.headers))

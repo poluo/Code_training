@@ -10,16 +10,20 @@ from scrapy.exceptions import DropItem
 
 class JasonAmazonPipeline(object):
     def open_spider(self, spider):
-        self.file = open('book.json', 'w', encoding='utf-8')
-        self.used_list = []
+        self.file_num = 0
+        self.count = 0
+        self.file = open('book_{}.json'.format(self.file_num), 'w+', encoding='utf-8')
 
     def process_item(self, item, spider):
-        if item['href'] not in self.used_list:
+        if self.count < 10000:
+            self.count += 1
             line = json.dumps(dict(item)) + "\n"
             self.file.write(line)
-            self.used_list.append(item['href'])
         else:
-            raise DropItem("already in list: %s" % item)
+            self.file.close()
+            self.file_num += 1
+            self.file = open('book_{}.json'.format(self.file_num), 'w+', encoding='utf-8')
+            self.count = 0
 
     def close_spider(self, spider):
         self.file.close()

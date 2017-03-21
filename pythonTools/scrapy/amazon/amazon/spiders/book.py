@@ -1,90 +1,64 @@
 # -*- coding: utf-8 -*-
-from scrapy.spider import CrawlSpider, Rule
-from scrapy.linkextractors import LinkExtractor
+import scrapy
 from amazon.items import AmazonItem
-from bs4 import BeautifulSoup
-from scrapy_redis.spiders import RedisCrawlSpider
 
 
-class BookSpider(RedisCrawlSpider):
+class BookSpider(scrapy.Spider):
     name = "book"
     allowed_domains = ["amazon.cn"]
-    redis_key = 'book:start_urls'
-    # start_urls = (
-    #     # 'https://www.amazon.cn/%E5%9B%BE%E4%B9%A6/b/ref=sa_menu_top_books_l1?ie=UTF8&node=658390051',
-    #     'https://www.amazon.cn/s/ref=lp_658508051_ex_n_1?rh=n%3A658390051%2Cn%3A%21658391051%2Cn%3A658394051&bbn=658394051&ie=UTF8&qid=1490017322',
-    # )
-    contents_url = ('.*/s/ref=lp_\d{9}_nr_n.+',
-                    '.*/s/ref=lp_\d{9}_pg_\d.+', '.*/s/ref=is_p._\d.+', '.*/s/ref=sr_pg_\d.+')
-    contents_css = ('#refinements > div.categoryRefinementsSection > ul > li > a', '#pagn > span.pagnLink > a')
-    books_css = (
-        'li.s-result-item.celwidget  > div > div > div > div.a-fixed-left-grid-col.a-col-right > div.a-row.a-spacing-small > div:nth-child(1) > a')
-    books_url = ('/gp/product/.+books.+', '.*/dp/.+books.+')
     base_url = 'https://www.amazon.cn'
-    rules = [
-        Rule(LinkExtractor(allow=contents_url, restrict_css=contents_css), callback='parse_contents', follow=True,
-             process_links='link_filtering'),
-        Rule(LinkExtractor(allow=books_url, deny='.+/uedata/unsticky/.+', restrict_css=books_css),
-             callback='parse_book', follow=True),
-    ]
-    contents_count = 0
     books_count = 0
-    links_used = []
+    valid_stytle = ['margin-left: 6px', 'margin-left: 14px', 'margin-left: 22px', 'margin-left: -2px']
 
-    def link_filtering(self, links):
-        ret = []
-        for one in links:
-            tmp = one.url.split('&')[0]
-            if 'books' in tmp:
-                tmp = tmp[:tmp.find('/ref')]
-            if tmp not in self.links_used:
-                self.links_used.append(tmp)
-                ret.append(one)
-            else:
+    def start_requests(self):
+        urls = [
+            'https://www.amazon.cn/s/ref=lp_658390051_nr_n_1?fst=as%3Aoff&rh=n%3A658390051%2Cn%3A%21658391051%2Cn%3A658393051&bbn=658391051&ie=UTF8&qid=1490104448&rnid=658391051',
+        ]
+        for url in urls:
+            yield scrapy.Request(url=url, callback=self.parse)
+
+    def parse(self, response):
+        content_list = response.css('#refinements > div.categoryRefinementsSection > ul > li')
+        next_link_list = []
+
+        for one in content_list:
+            style = one.css('::attr(style)').extract_first()
+            if style in self.valid_stytle:
+                link = one.css('a::attr(href)').extract_first()
+                next_link_list.append(link)
+                self.logger.debug(link)
+                self.logger.debug(one.css('span.refinementLink::text').extract_first())
+        if len(next_link_list) == 0:
+            self.logger.debug('no deeper link,start crawl page')
+            # self.parse_page(response) # why not work
+            yield scrapy.Request(response.url, callback=self.parse_page, dont_filter=True)
+        else:
+            self.logger.debug(len(next_link_list))
+            for one in next_link_list:
+                self.logger.debug('go on deeper {}'.format(one))
+                yield scrapy.Request(self.base_url + one, callback=self.parse)
+
+    def parse_page(self, response):
+        books_url = []
+        tmp_list = response.css(
+            'li.s-result-item.celwidget  > div > div > div > div.a-fixed-left-grid-col.a-col-right > div.a-row.a-spacing-small > div:nth-child(1) > a')
+        for one in tmp_list:
+            link = one.css('::attr(href)').extract_first()
+            books_url.append(link)
+            self.logger.debug('new book {}'.format(one.css('::attr(title)').extract_first()))
+        for one in books_url:
+            self.books_count += 1
+            try:
+                yield scrapy.Request(one, callback=self.parse_book)
+            except ValueError:
                 pass
-        return ret
 
-    def parse_contents(self, response):
-        self.contents_count += 1
+        link = response.css('#pagnNextLink::attr(href)').extract_first()
+        if link:
+            self.logger.debug('next page {}'.format(link))
+            yield scrapy.Request(self.base_url + link, callback=self.parse_page)
 
     def parse_book(self, response):
-        self.books_count += 1
-        yield self.parse_with_scrapy(response)
-
-    def parse_with_bs4(self, response):
-        my_item = AmazonItem()
-        my_item['href'] = response.url
-        my_soup = BeautifulSoup(response.text, 'lxml')
-        try:
-            my_item['name'] = my_soup.select('#title > span:nth-of-type(1)')
-        except Exception as e:
-            raise e
-        my_item['time'] = my_soup.select('#title > span:nth-of-type(3)')
-        my_item['score'] = my_soup.select('#acrPopover')
-        my_item['comment_num'] = my_soup.select('#acrCustomerReviewText')
-        my_item['discount'] = my_soup.select('#soldByThirdParty > span:nth-of-type(3)')
-        my_item['publisher'] = my_soup.select(
-            'td.bucket > div.content > ul > li:nth-of-type(1)')
-        tmp = my_soup.select('#byline > span.author.notFaded')
-        for one in tmp:
-            flag = one.select('span.contribution > span')
-            if not flag:
-                self.logger.warning('{}'.format(response.url))
-                raise AttributeError
-            elif '作者' in flag:
-                my_item['author'] = one.select('a.a-link-normal')
-            elif '译者' in flag:
-                my_item['translator'] = one.select('a.a-link-normal')
-
-        tmp = my_soup.select('#tmmSwatches > ul > li.swatchElement.selected')
-        my_item['price'] = ''
-        for one in tmp:
-            my_item['price'] += '{}:{} /'.format(
-                one.select('span > span > span > a > span'),
-                one.select('span > span > span > a > span > span'))
-        return my_item
-
-    def parse_with_scrapy(self, response):
         my_item = AmazonItem()
         my_item['href'] = response.url
         try:
@@ -120,7 +94,6 @@ class BookSpider(RedisCrawlSpider):
         return my_item
 
     def closed(self, reason):
-        self.logger.info('content count = {}'.format(self.contents_count))
         self.logger.info('books count = {}'.format(self.books_count))
         self.logger.info(reason)
 

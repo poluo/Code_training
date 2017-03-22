@@ -4,7 +4,7 @@ import random
 '''
 USER_AGENTS 随机头信息
 '''
-AGENTS_ALL = [
+AGENTS = [
             "Avant Browser/1.2.789rel1 (http://www.avantbrowser.com)",
             "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) AppleWebKit/532.5 (KHTML, like Gecko) Chrome/4.0.249.0 Safari/532.5",
             "Mozilla/5.0 (Windows; U; Windows NT 5.2; en-US) AppleWebKit/532.9 (KHTML, like Gecko) Chrome/5.0.310.0 Safari/532.9",
@@ -500,9 +500,3 @@ AGENTS_ALL = [
             "SearchExpress",
 ]
 
-'''
-请求头
-'''
-AGENTS = {
-    'User-Agent': random.choice(AGENTS_ALL),
-}

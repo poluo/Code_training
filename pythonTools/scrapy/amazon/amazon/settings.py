@@ -30,7 +30,7 @@ ROBOTSTXT_OBEY = True
 # The download delay setting will honor only one of:
 # CONCURRENT_REQUESTS_PER_DOMAIN = 16
 # CONCURRENT_REQUESTS_PER_IP = 16
-LOG_LEVEL = 'INFO'
+LOG_LEVEL = 'DEBUG'
 # Disable cookies (enabled by default)
 # COOKIES_ENABLED = False
 
@@ -42,7 +42,7 @@ LOG_LEVEL = 'INFO'
 #   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
 #   'Accept-Language': 'en',
 # }
-DEPTH_LIMIT = 0
+DOWNLOAD_TIMEOUT = 20
 # Enable or disable spider middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/spider-middleware.html
 # SPIDER_MIDDLEWARES = {

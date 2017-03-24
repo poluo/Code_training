@@ -9,16 +9,20 @@ import logging as log
 import pymongo
 import requests
 import json
-
+import base64
 
 class CustomNormalMiddleware(object):
     IP_ERRORS = (ResponseNeverReceived, ConnectError, ConnectionLost, TunnelError, TimeoutError, ConnectionRefusedError)
 
     def __init__(self):
-        # for mongodb
-        self.client = pymongo.MongoClient('mongodb://poluo:poluo123@115.28.36.253:27017/proxy')
-        self.db = self.client.proxy
-        self.collection = self.db.proxy_list
+        # for abuyun
+        # 代理服务器
+        '''self.proxyHost = "proxy.abuyun.com"
+        self.proxyPort = "9010"
+        # 代理隧道验证信息
+        self.proxyUser = "H56NQF9B5KPT00VP"
+        self.proxyPass = "EEF45504DAF242BC"
+        self.proxyAuth = "Basic " + base64.urlsafe_b64encode(bytes((self.proxyUser + ":" + self.proxyPass), "ascii")).decode("utf8") '''
         self.proxy = None
         self.cookies = None
         self.agent = None
@@ -28,7 +32,7 @@ class CustomNormalMiddleware(object):
 
     def process_request(self, request, spider):
         self.request_count += 1
-        if self.request_count > 100:
+        if self.request_count > 500:
             self.request_count = 0
             log.info('request more than 400,update setting')
             self.update_setting()
@@ -46,9 +50,11 @@ class CustomNormalMiddleware(object):
             flag = True
 
         if flag:
+            # for abuyun
+            '''request.meta["proxy"] = "http://proxy.abuyun.com:9010"
+            request.headers["Proxy-Authorization"] = self.proxyAuth'''
             request.meta['proxy'] = self.proxy
-            request.headers[
-                'User-Agent'] = self.agent
+            request.headers['User-Agent'] = self.agent
             request.headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
             request.headers['Accept-Encoding'] = 'gzip, deflate, sdch, br'
             request.headers['Accept-Language'] = 'zh-CN,zh;q=0.8,zh-TW;q=0.6'
@@ -59,8 +65,14 @@ class CustomNormalMiddleware(object):
             raise IgnoreRequest
 
     def update_setting(self):
-        self.get_proxy()
-        self.get_new_cookie()
+        while True:
+            #　abunyu do not need get proxy
+            self.get_proxy_5u()
+            self.get_new_cookie()
+            if self.cookies != {}:
+                break
+            else:
+                log.info('cookies in empty,try again')
 
     def process_response(self, request, response, spider):
         if 'book' in response.url:
@@ -73,30 +85,8 @@ class CustomNormalMiddleware(object):
 
         return response
 
-    def get_proxy(self):
-        num = 5
-        tid = '555947027942665'
-        url = 'http://tvp.daxiangdaili.com/ip/?tid={}&num={}&category=2&delay=5&protocol=https&ports=80,8080,3128'.format(
-            tid, num)
-        ip_all = []
-        result = requests.get(url)
-        result = result.text.split('\n')
-        for one in result:
-            if one != '':
-                ip = {
-                    'ip': one.split(':')[0].strip(),
-                    'port': one.split(':')[1].strip()
-                }
-                ip_all.append(ip)
-        if len(ip_all) == 0:
-            log.info('NO PROXY AVAILABLE')
-        else:
-            log.info('get new proxy {}'.format(ip_all))
-        tmp = ip_all.pop()
-        self.proxy = 'http://{}:{}'.format(tmp['ip'], tmp['port'])
-
-    def get_proxy_test(self):
-        order = "888888888888888";
+    def get_proxy_5u(self):
+        order = " 3a8d5439bd4db7c8ecca8780d3bce296";
         # 获取IP的API接口
         apiUrl = "http://api.ip.data5u.com/dynamic/get.html?order=" + order;
         ip_all = []
@@ -118,8 +108,8 @@ class CustomNormalMiddleware(object):
         else:
             log.info('get new proxy {}'.format(ip_all))
         tmp = random.choice(ip_all)
+        log.info('proxy {}'.format(tmp))
         self.proxy = 'https://{}:{}'.format(tmp['ip'], tmp['port'])
-        log.info('proxy {}'.format(self.proxy))
 
     def get_new_cookie(self):
         from amazon.agents import AGENTS
@@ -128,9 +118,22 @@ class CustomNormalMiddleware(object):
         flag = 1
         count = 0
         log.info(headers)
+        # for abuyun
+        '''proxyMeta = "http://%(user)s:%(pass)s@%(host)s:%(port)s" % {
+          "host" : self.proxyHost,
+          "port" : self.proxyPort,
+          "user" : self.proxyUser,
+          "pass" : self.proxyPass,
+        }
+        proxies = {
+        "http"  : proxyMeta,
+        "https" : proxyMeta,
+        }'''
         while flag:
             try:
-                r = requests.get('https://www.amazon.cn', headers=headers, timeout=5, proxies={'https': self.proxy}, )
+                # for abuyun
+                # r = requests.get('https://www.amazon.cn', headers=headers, timeout=5 , proxies=proxies)
+                r = requests.get('https://www.amazon.cn', headers=headers, timeout=5, proxies={'https': self.proxy} )
             except Exception as e:
                 log.info(e)
                 count += 1

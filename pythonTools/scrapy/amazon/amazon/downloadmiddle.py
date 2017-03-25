@@ -11,19 +11,33 @@ import requests
 import json
 import base64
 
+
 class CustomNormalMiddleware(object):
     IP_ERRORS = (ResponseNeverReceived, ConnectError, ConnectionLost, TunnelError, TimeoutError, ConnectionRefusedError)
 
     def __init__(self):
         # for abuyun
         # 代理服务器
-        '''self.proxyHost = "proxy.abuyun.com"
+        self.proxyHost = "proxy.abuyun.com"
         self.proxyPort = "9010"
         # 代理隧道验证信息
-        self.proxyUser = "H56NQF9B5KPT00VP"
-        self.proxyPass = "EEF45504DAF242BC"
-        self.proxyAuth = "Basic " + base64.urlsafe_b64encode(bytes((self.proxyUser + ":" + self.proxyPass), "ascii")).decode("utf8") '''
-        self.proxy = None
+        self.proxyUser = "H2W595AM4Y5H902P"
+        self.proxyPass = "ADDEFEB88B2E42D5"
+        self.proxyAuth = "Basic " + base64.urlsafe_b64encode(
+            bytes((self.proxyUser + ":" + self.proxyPass), "ascii")).decode("utf8")
+
+        # for abuyun
+        proxyMeta = "http://%(user)s:%(pass)s@%(host)s:%(port)s" % {
+            "host": self.proxyHost,
+            "port": self.proxyPort,
+            "user": self.proxyUser,
+            "pass": self.proxyPass,
+        }
+        self.proxies = {
+            "http": proxyMeta,
+            "https": proxyMeta,
+        }
+
         self.cookies = None
         self.agent = None
         self.request_count = 0
@@ -32,12 +46,12 @@ class CustomNormalMiddleware(object):
 
     def process_request(self, request, spider):
         self.request_count += 1
-        if self.request_count > 500:
+        if self.request_count > 4000000:
             self.request_count = 0
             log.info('request more than 400,update setting')
             self.update_setting()
         if 'signin' in request.url:
-            log.info('need signin,try sleep 2s...')
+            log.info('need sign in,try sleep 2s...')
             time.sleep(2)
         if 'dp' in request.url:
             tmp = re.compile(r'/dp/.{10}/').findall(request.url)
@@ -51,9 +65,8 @@ class CustomNormalMiddleware(object):
 
         if flag:
             # for abuyun
-            '''request.meta["proxy"] = "http://proxy.abuyun.com:9010"
-            request.headers["Proxy-Authorization"] = self.proxyAuth'''
-            request.meta['proxy'] = self.proxy
+            request.meta["proxy"] = "http://proxy.abuyun.com:9010"
+            request.headers["Proxy-Authorization"] = self.proxyAuth
             request.headers['User-Agent'] = self.agent
             request.headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
             request.headers['Accept-Encoding'] = 'gzip, deflate, sdch, br'
@@ -66,8 +79,8 @@ class CustomNormalMiddleware(object):
 
     def update_setting(self):
         while True:
-            #　abunyu do not need get proxy
-            self.get_proxy_5u()
+            # 　abunyu do not need get proxy
+            self.change_proxy()
             self.get_new_cookie()
             if self.cookies != {}:
                 break
@@ -82,34 +95,12 @@ class CustomNormalMiddleware(object):
         if '自动程序' in response.text or not name:
             log.info('robot check happened,update setting')
             self.update_setting()
-
         return response
 
-    def get_proxy_5u(self):
-        order = " 3a8d5439bd4db7c8ecca8780d3bce296";
-        # 获取IP的API接口
-        apiUrl = "http://api.ip.data5u.com/dynamic/get.html?order=" + order;
-        ip_all = []
-        try:
-            # 获取IP列表,一次获取一个
-            res = requests.get(apiUrl).text.strip("\n");
-            # 按照\n分割获取到的IP
-            ips = res.split("\n");
-            for one in ips:
-                ip = {
-                    'ip': one.split(':')[0].strip(),
-                    'port': one.split(':')[1].strip()
-                }
-                ip_all.append(ip)
-        except Exception as e:
-            log.info(e)
-        if len(ip_all) == 0:
-            log.info('NO PROXY AVAILABLE')
-        else:
-            log.info('get new proxy {}'.format(ip_all))
-        tmp = random.choice(ip_all)
-        log.info('proxy {}'.format(tmp))
-        self.proxy = 'https://{}:{}'.format(tmp['ip'], tmp['port'])
+    def change_proxy(self):
+        r = requests.get('http://proxy.abuyun.com/switch-ip', timeout=5, proxies=self.proxies)
+        log.info('new proxy')
+        log.info(r.text)
 
     def get_new_cookie(self):
         from amazon.agents import AGENTS
@@ -118,27 +109,16 @@ class CustomNormalMiddleware(object):
         flag = 1
         count = 0
         log.info(headers)
-        # for abuyun
-        '''proxyMeta = "http://%(user)s:%(pass)s@%(host)s:%(port)s" % {
-          "host" : self.proxyHost,
-          "port" : self.proxyPort,
-          "user" : self.proxyUser,
-          "pass" : self.proxyPass,
-        }
-        proxies = {
-        "http"  : proxyMeta,
-        "https" : proxyMeta,
-        }'''
         while flag:
             try:
                 # for abuyun
-                # r = requests.get('https://www.amazon.cn', headers=headers, timeout=5 , proxies=proxies)
-                r = requests.get('https://www.amazon.cn', headers=headers, timeout=5, proxies={'https': self.proxy} )
+                r = requests.get('https://www.amazon.cn', headers=headers, timeout=5, proxies=self.proxies)
             except Exception as e:
                 log.info(e)
                 count += 1
                 time.sleep(2)
-                self.get_proxy()
+                if count > 3:
+                    self.change_proxy()
             else:
                 flag = 0
             finally:

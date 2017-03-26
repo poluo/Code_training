@@ -6,14 +6,15 @@ from scrapy.exceptions import IgnoreRequest
 import time
 import random
 import logging as log
-import pymongo
 import requests
 import json
 import base64
+import os
 
 
 class CustomNormalMiddleware(object):
-    IP_ERRORS = (ResponseNeverReceived, ConnectError, ConnectionLost, TunnelError, TimeoutError, ConnectionRefusedError)
+    IP_ERRORS = (ResponseNeverReceived, ConnectError, ConnectionLost,
+                 TunnelError, TimeoutError, ConnectionRefusedError)
 
     def __init__(self):
         # for abuyun
@@ -65,10 +66,11 @@ class CustomNormalMiddleware(object):
 
         if flag:
             # for abuyun
-            request.meta["proxy"] = "http://proxy.abuyun.com:9010"
-            request.headers["Proxy-Authorization"] = self.proxyAuth
+            # request.meta["proxy"] = "http://proxy.abuyun.com:9010"
+            # request.headers["Proxy-Authorization"] = self.proxyAuth
             request.headers['User-Agent'] = self.agent
-            request.headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+            request.headers[
+                'Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
             request.headers['Accept-Encoding'] = 'gzip, deflate, sdch, br'
             request.headers['Accept-Language'] = 'zh-CN,zh;q=0.8,zh-TW;q=0.6'
             request.headers['Connection'] = 'keep-alive'
@@ -89,7 +91,8 @@ class CustomNormalMiddleware(object):
 
     def process_response(self, request, response, spider):
         if 'book' in response.url:
-            name = response.css('#title > span:nth-child(1)::text').extract_first()
+            name = response.css(
+                '#title > span:nth-child(1)::text').extract_first()
         else:
             name = 1
         if '自动程序' in response.text or not name:
@@ -98,9 +101,16 @@ class CustomNormalMiddleware(object):
         return response
 
     def change_proxy(self):
-        r = requests.get('http://proxy.abuyun.com/switch-ip', timeout=5, proxies=self.proxies)
-        log.info('new proxy')
-        log.info(r.text)
+        # r = requests.get('http://proxy.abuyun.com/switch-ip',
+        #                  timeout=5, proxies=self.proxies)
+        # log.info('new proxy')
+        # log.info(r.text)
+        cmd_str = "pppoe-stop"
+        os.system(cmd_str)
+        time.sleep(2)
+        cmd_str = "pppoe-start"
+        os.system(cmd_str)
+        time.sleep(5)
 
     def get_new_cookie(self):
         from amazon.agents import AGENTS
@@ -112,7 +122,7 @@ class CustomNormalMiddleware(object):
         while flag:
             try:
                 # for abuyun
-                r = requests.get('https://www.amazon.cn', headers=headers, timeout=5, proxies=self.proxies)
+                r = requests.get('https://www.amazon.cn', headers=headers, timeout=5,)# proxies=self.proxies)
             except Exception as e:
                 log.info(e)
                 count += 1

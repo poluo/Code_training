@@ -9,6 +9,9 @@ import scrapy
 
 
 class QuoraItem(scrapy.Item):
-    # define the fields for your item here like:
-    # name = scrapy.Field()
-    pass
+    Name = scrapy.Field()
+    Work = scrapy.Field()
+    School = scrapy.Field()
+    Location = scrapy.Field()
+    AnswerViews = scrapy.Field()
+    PublishedWriter = scrapy.Field()

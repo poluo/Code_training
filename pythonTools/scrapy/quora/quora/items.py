@@ -10,8 +10,13 @@ import scrapy
 
 class QuoraItem(scrapy.Item):
     Name = scrapy.Field()
+    Num = scrapy.Field()
+    
+class FollowerItem(scrapy.Item):
+    Name = scrapy.Field()
     Work = scrapy.Field()
     School = scrapy.Field()
     Location = scrapy.Field()
     AnswerViews = scrapy.Field()
     PublishedWriter = scrapy.Field()
+    FollowersNum = scrapy.Field()

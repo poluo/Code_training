@@ -11,7 +11,7 @@ class FollowersSpider(scrapy.Spider):
         'https://www.quora.com/webnode2/server_call_POST',
     )
     frmdata = {}
-    frmdata['json'] = '{"args":[],"kwargs":{"email":"997786818@qq.com","password":"poluo123"}}'
+    frmdata['json'] = '{"args":[],"kwargs":{"email":"email","password":"passwd"}}'
     frmdata['formkey'] = '75ec5150317eefe0dae46fc9f101a5da'
     frmdata['postkey'] = '38b460e8664939fb1c080a6244e14193'
     frmdata['window_id'] = 'dep3302-2238714638416261581'
@@ -27,6 +27,8 @@ class FollowersSpider(scrapy.Spider):
                'm-login': '0', 'm-early_v': '0f20c735abd3a97d', 'm-tz': '-480', 'm-wf-loaded': 'q-icons-q_serif',
                '_ga': 'GA1.2.420550872.1490615030'}
 
+    passed_list = ['/profile/Poluo-Tomas']
+
     def start_requests(self):
         for one in self.start_urls:
             yield FormRequest(one, cookies=self.cookies, formdata=self.frmdata, callback=self.parse, headers={
@@ -39,33 +41,48 @@ class FollowersSpider(scrapy.Spider):
         yield scrapy.Request(url, cookies=self.cookies, callback=self.parse_page)
 
     def parse_page(self, response):
+        # get original user from my home page
         user_list = response.css('a.user::attr(href)').extract()
-        for one in user_list:
-            if 'Poluo' not in one:
-                url = 'https://www.quora.com' + one
-                yield scrapy.Request(url, cookies=self.cookies, callback=self.parse_home_page, meta={'Name': one})
+        return self.process_usrlist(user_list)
 
-    def parse_home_page(self, response):
-        my_item = {}
-        my_item['Name'] = response.meta['Name']
-        my_item['Work'] = response.css(
-            'div.CredentialListItem.WorkCredentialListItem.AboutListItem > span > span > span::text').extract_first()
-        my_item['School'] = response.css(
-            'div.CredentialListItem.AboutListItem.SchoolCredentialListItem > span > span > span::text').extract_first()
-        my_item['Location'] = response.css(
-            'div.CredentialListItem.LocationCredentialListItem.AboutListItem > span > span > span::text').extract_first()
-        my_item['AnswerViews'] = response.css(
-            'div.AboutListItem.AnswerViewsAboutListItem > span.main_text::text').extract_first()
-        my_item['PublishedWriter'] = response.css(
-            'div.AboutListItem.PublishedWriterAboutListItem > span.main_text > a::text').extract_first()
-        yield scrapy.Request(response.url+'/followers',cookies=self.cookies, callback=self.parse_followers, meta={'data':my_item})
+    # def parse_home_page(self, response):
+    #     my_dict = {}
+    #     my_dict['Name'] = response.meta['Name']
+    #     my_dict['Work'] = response.css(
+    #         'div.CredentialListItem.WorkCredentialListItem.AboutListItem > span > span > span::text').extract_first()
+    #     my_dict['School'] = response.css(
+    #         'div.CredentialListItem.AboutListItem.SchoolCredentialListItem > span > span > span::text').extract_first()
+    #     my_dict['Location'] = response.css(
+    #         'div.CredentialListItem.LocationCredentialListItem.AboutListItem > span > span > span::text').extract_first()
+    #     my_dict['AnswerViews'] = response.css(
+    #         'div.AboutListItem.AnswerViewsAboutListItem > span.main_text::text').extract_first()
+    #     my_dict['PublishedWriter'] = response.css(
+    #         'div.AboutListItem.PublishedWriterAboutListItem > span.main_text > a::text').extract_first()
+    #     my_dict['FollowersNum'] = response.css(
+    #         'li.EditableListItem.NavListItem.FollowersNavItem.NavItem.not_removable > a > span.list_count::text').extract_first()
+    #     my_item = QuoraItem(my_dict)
+    #     self.logger.info(my_item)
+    #     yield my_item
+    #     yield scrapy.Request(response.url + '/followers', cookies=self.cookies, callback=self.parse_followers)
 
-    def parse_followers(self,response):
-        my_item =QuoraItem(response.meta['data'])
+    def parse_followers(self, response):
         user_list = response.css('a.user::attr(href)').extract()
-        print(user_list)
+        return self.process_usrlist(user_list)
 
-
+    def process_usrlist(self,user_list):
+    	for one in user_list:
+            if str.isdigit(one[-1]):
+                num = one.split('-')[-1]
+                one = one.replace('-'+str(num),'')
+            else:
+                num = 0
+            if one not in self.passed_list:
+                self.passed_list.append(one)
+                self.logger.info('Name {} Num {}'.format(one,num))
+                yield QuoraItem({'Name':one,'Num':num})
+                url = 'https://www.quora.com' + one + '/followers'
+                yield scrapy.Request(url, cookies=self.cookies, callback=self.parse_followers)
+                
 if __name__ == '__main__':
     from scrapy.cmdline import execute
 

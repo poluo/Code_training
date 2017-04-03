@@ -5,17 +5,22 @@
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
 import json
-import pymongo
-import logging as logger
 class FollowerPipeline(object):
     def open_spider(self, spider):
-        url = 'mongodb://poluo:poluo123@115.28.36.253:27017/proxy'
-        self.client = pymongo.MongoClient(url)
-        self.db = self.client.proxy
-        self.collection = self.db.quora_info
+        self.file_num = 0
+        self.count = 0
+        self.file = open('quora_{}.json'.format(self.file_num), 'w+', encoding='utf-8')
 
     def process_item(self, item, spider):
-        self.collection.insert(dict(item))
+        if self.count < 10000:
+            self.count += 1
+            line = json.dumps(dict(item)) + "\n"
+            self.file.write(line)
+        else:
+            self.file.close()
+            self.file_num += 1
+            self.file = open('quora_{}.json'.format(self.file_num), 'w+', encoding='utf-8')
+            self.count = 0
 
     def close_spider(self, spider):
-        self.client.close()
+        self.file.close()

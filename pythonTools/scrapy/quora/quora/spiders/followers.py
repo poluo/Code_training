@@ -2,10 +2,7 @@
 import scrapy
 from scrapy.http import FormRequest
 from quora.items import FollowerItem
-import pymongo
-import os
-import time
-import requests
+
 
 class FollowersSpider(scrapy.Spider):
     name = "followers"
@@ -33,14 +30,6 @@ class FollowersSpider(scrapy.Spider):
 
     passed_list = []
 
-    url = 'mongodb://poluo:poluo123@115.28.36.253:27017/proxy'
-    client = pymongo.MongoClient(url)
-    db = client.proxy
-    collection = db.quora_user
-    collection_backup = db.quora_user_backup
-    need_login = 0
-    login_count = 0
-
     def start_requests(self):
         self.logger.info('Login')
         self.cookies['m-login'] = '0'
@@ -54,65 +43,75 @@ class FollowersSpider(scrapy.Spider):
         yield scrapy.Request(url, cookies=self.cookies, callback=self.parse_page)
 
     def parse_page(self, response):
-        while True:
-            tmp = self.collection.find_one()
-            try:
-                self.collection_backup.insert(tmp)
-            except pymongo.errors.DuplicateKeyError:
-                pass
-            self.collection.remove(tmp)
-            if tmp:
-                yield self.procss_item(tmp)
-            else:
-                break
+        # get original user from my home page
+        user_list = response.css('a.user::attr(href)').extract()
+        return self.process_usrlist(user_list)
 
-    def procss_item(self, tmp):
-        if str.isdigit(tmp['Name'][-1]):
-            num = int(tmp['Name'].split('-')[-1])
-            tmp['Name'] = tmp['Name'].replace('-' + str(num), '')
-        else:
-            num = int(tmp['Num'])
-
-        if tmp['Name'] not in self.passed_list:
-            self.passed_list.append(tmp['Name'])
-            if num == 0:
-                url = 'https://www.quora.com' + tmp['Name']
-            else:
-                url = 'https://www.quora.com' + tmp['Name'] + '-1'
-            return scrapy.Request(url=url, cookies=self.cookies, callback=self.parse_home_page, headers={
+    def parse_followers(self, response):
+        if response.status == 429:
+            self.logger.info('parse followers 429 response,try again')
+            return scrapy.Request(url=response.url, cookies=self.cookies, callback=self.parse_home_page, headers={
                 'Referer': 'https://www.quora.com/'})
+
+        user_list = response.css('a.user::attr(href)').extract()
+        return self.process_usrlist(user_list)
+
+    def process_usrlist(self, user_list):
+        for one in user_list:
+            if str.isdigit(one[-1]):
+                num = one.split('-')[-1]
+                one = one.replace('-' + str(num), '')
+            else:
+                num = 0
+            if one not in self.passed_list:
+                self.passed_list.append(one)
+                self.logger.info('Name {} Num {}'.format(one, num))
+                yield self.procss_item(one, num)
+                url = 'https://www.quora.com' + one + '/followers'
+                yield scrapy.Request(url, cookies=self.cookies, callback=self.parse_followers)
+
+    def procss_item(self, name, num):
+        if num == 0:
+            url = 'https://www.quora.com' + name
         else:
-            return None
+            url = 'https://www.quora.com' + name + '-1'
+        return scrapy.Request(url=url, cookies=self.cookies, callback=self.parse_home_page, headers={
+            'Referer': 'https://www.quora.com/'})
 
     def parse_home_page(self, response):
-        my_dict = {}
-        my_dict['Name'] = response.url.split('/')[-1]
-        my_dict['Work'] = response.css(
-            'div.CredentialListItem.WorkCredentialListItem.AboutListItem > span > span > span::text').extract_first()
-        my_dict['School'] = response.css(
-            'div.CredentialListItem.AboutListItem.SchoolCredentialListItem > span > span > span::text').extract_first()
-        my_dict['Location'] = response.css(
-            'div.CredentialListItem.LocationCredentialListItem.AboutListItem > span > span > span::text').extract_first()
-        my_dict['AnswerViews'] = response.css(
-            'div.AboutListItem.AnswerViewsAboutListItem > span.main_text::text').extract_first()
-        my_dict['PublishedWriter'] = response.css(
-            'div.AboutListItem.PublishedWriterAboutListItem > span.main_text > a::text').extract_first()
-        my_dict['FollowersNum'] = response.css(
-            'li.EditableListItem.NavListItem.FollowersNavItem.NavItem.not_removable > a > span.list_count::text').extract_first()
-        my_item = FollowerItem(my_dict)
-        yield my_item
-        if str.isdigit(response.url[-1]):
-            try:
-                num = int(response.url.split('-')[-1])
-            except ValueError:
-                num = 0
-                pass
-            if num:
-                url = response.url.replace(str(num), str(num + 1))
-                yield scrapy.Request(url=url, cookies=self.cookies, callback=self.parse_home_page, headers={
-                    'Referer': 'https://www.quora.com/'})
+        if response.status == 429:
+            self.logger.info('parse home page 429 response,try again')
+            return scrapy.Request(url=response.url, cookies=self.cookies, callback=self.parse_home_page, headers={
+                'Referer': 'https://www.quora.com/'})
         else:
-            pass
+            my_dict = {}
+            my_dict['Name'] = response.url.split('/')[-1]
+            my_dict['Work'] = response.css(
+                'div.CredentialListItem.WorkCredentialListItem.AboutListItem > span > span > span::text').extract_first()
+            my_dict['School'] = response.css(
+                'div.CredentialListItem.AboutListItem.SchoolCredentialListItem > span > span > span::text').extract_first()
+            my_dict['Location'] = response.css(
+                'div.CredentialListItem.LocationCredentialListItem.AboutListItem > span > span > span::text').extract_first()
+            my_dict['AnswerViews'] = response.css(
+                'div.AboutListItem.AnswerViewsAboutListItem > span.main_text::text').extract_first()
+            my_dict['PublishedWriter'] = response.css(
+                'div.AboutListItem.PublishedWriterAboutListItem > span.main_text > a::text').extract_first()
+            my_dict['FollowersNum'] = response.css(
+                'li.EditableListItem.NavListItem.FollowersNavItem.NavItem.not_removable > a > span.list_count::text').extract_first()
+            my_item = FollowerItem(my_dict)
+            yield my_item
+            if str.isdigit(response.url[-1]):
+                try:
+                    num = int(response.url.split('-')[-1])
+                except ValueError:
+                    num = 0
+                    pass
+                if num:
+                    url = response.url.replace(str(num), str(num + 1))
+                    yield scrapy.Request(url=url, cookies=self.cookies, callback=self.parse_home_page, headers={
+                        'Referer': 'https://www.quora.com/'})
+            else:
+                pass
 
 
 if __name__ == '__main__':

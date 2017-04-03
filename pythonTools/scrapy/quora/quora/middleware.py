@@ -2,6 +2,8 @@ import logging as log
 import os
 import requests
 import time
+from scrapy.exceptions import IgnoreRequest
+
 
 class CustomNormalMiddleware(object):
     def __init__(self):
@@ -18,26 +20,40 @@ class CustomNormalMiddleware(object):
         self.frmdata['js_init'] = '{}'
         self.frmdata['__metadata'] = '{}'
         self.cookies = {'m-b': 'pGLDg-FVmqrI6CF2993g9g\075\075', 'm-s': 'asXhk8Af26gYfG5n-beTXw\075\075',
-                   'm-css_v': 'ec931eb5703b888f',
-                   'm-login': '0', 'm-early_v': '0f20c735abd3a97d', 'm-tz': '-480', 'm-wf-loaded': 'q-icons-q_serif',
-                   '_ga': 'GA1.2.420550872.1490615030'}
+                        'm-css_v': 'ec931eb5703b888f',
+                        'm-login': '0', 'm-early_v': '0f20c735abd3a97d', 'm-tz': '-480',
+                        'm-wf-loaded': 'q-icons-q_serif',
+                        '_ga': 'GA1.2.420550872.1490615030'}
+        self.login_count = 0
+        self.count = 0
+
+    def process_request(self, request, spider):
+        request.meta['count'] = self.login_count
 
     def process_response(self, request, response, spider):
         if response.status == 429:
-            log.info('429 retry login')
-            cmd_str = "pppoe-stop"
-            os.system(cmd_str)
-            time.sleep(0.1)
-            cmd_str = "pppoe-start"
-            os.system(cmd_str)
-            time.sleep(0.2)
-            tmp = requests.post('https://www.quora.com/webnode2/server_call_POST',data= self.frmdata,cookies=self.cookies)
-            if tmp.status_code == 200:
-                log.info('retry login,post success')
-            else:
-                log.info('retry login,post failed')
-            return  None
+            log.info(response.url)
+            try:
+                count = request.meta['count']
+            except AttributeError as e:
+                log.info('request no meta count {}'.format(e))
+                count = self.login_count
+            log.info('login count = {}'.format(self.login_count))
+            log.info('count = {}'.format(count))
+            if count == self.login_count:
+                log.info('429 retry login')
+                cmd_str = "adsl-stop"
+                os.system(cmd_str)
+                time.sleep(0.1)
+                cmd_str = "adsl-start"
+                os.system(cmd_str)
+                time.sleep(1)
+                tmp = requests.post('https://www.quora.com/webnode2/server_call_POST', data=self.frmdata,
+                                    cookies=self.cookies)
+                if tmp.status_code == 200:
+                    log.info('retry login,post success')
+                else:
+                    log.info('retry login,post failed')
+            return response
         else:
             return response
-
-  

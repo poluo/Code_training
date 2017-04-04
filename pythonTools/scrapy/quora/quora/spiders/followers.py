@@ -2,7 +2,7 @@
 import scrapy
 from scrapy.http import FormRequest
 from quora.items import FollowerItem
-
+import pymongo
 
 class FollowersSpider(scrapy.Spider):
     name = "followers"
@@ -27,8 +27,13 @@ class FollowersSpider(scrapy.Spider):
                'm-css_v': 'ec931eb5703b888f',
                'm-login': '0', 'm-early_v': '0f20c735abd3a97d', 'm-tz': '-480', 'm-wf-loaded': 'q-icons-q_serif',
                '_ga': 'GA1.2.420550872.1490615030'}
-
-    passed_list = []
+    
+    def connect_db(self):
+        url = 'mongodb://poluo:poluo123@115.28.36.253:27017/proxy'
+        client = pymongo.MongoClient(url)
+        db = client.proxy
+        self.collection_user = db.quora_user
+        self.collection_tmp = db.quora_tmp
 
     def start_requests(self):
         self.logger.info('Login')
@@ -40,47 +45,29 @@ class FollowersSpider(scrapy.Spider):
     def parse(self, response):
         self.cookies['m-login'] = '1'
         url = 'https://www.quora.com/'
-        yield scrapy.Request(url, cookies=self.cookies, callback=self.parse_page)
+        yield scrapy.Request(url, cookies=self.cookies, callback=self.start_crawl)
 
-    def parse_page(self, response):
-        # get original user from my home page
-        user_list = response.css('a.user::attr(href)').extract()
-        return self.process_usrlist(user_list)
-
-    def parse_followers(self, response):
-        if response.status == 429:
-            self.logger.info('parse followers 429 response,try again')
-            return scrapy.Request(url=response.url, cookies=self.cookies, callback=self.parse_home_page, headers={
-                'Referer': 'https://www.quora.com/'})
-
-        user_list = response.css('a.user::attr(href)').extract()
-        return self.process_usrlist(user_list)
-
-    def process_usrlist(self, user_list):
-        for one in user_list:
-            if str.isdigit(one[-1]):
-                num = one.split('-')[-1]
-                one = one.replace('-' + str(num), '')
+    def start_crawl(self, response):
+        self.connect_db()
+        while True:
+            data = self.collection_user.find_one()
+            if data:
+                self.collection_user.remove(data)
+                self.collection_tmp.insert(data)
+                self.logger.info('name {} num {}'.format(data['Name'],data['Num']))
+                if data['Num'] == 0:
+                    url = 'https://www.quora.com' + data['Name']
+                else:
+                    url = 'https://www.quora.com' + data['Name'] + '-{}'.format(data['Num'])
+                yield scrapy.Request(url=url, cookies=self.cookies, callback=self.parse_home_page, headers={
+                    'Referer': 'https://www.quora.com/'})
             else:
-                num = 0
-            if one not in self.passed_list:
-                self.passed_list.append(one)
-                self.logger.info('Name {} Num {}'.format(one, num))
-                yield self.procss_item(one, num)
-                url = 'https://www.quora.com' + one + '/followers'
-                yield scrapy.Request(url, cookies=self.cookies, callback=self.parse_followers)
-
-    def procss_item(self, name, num):
-        if num == 0:
-            url = 'https://www.quora.com' + name
-        else:
-            url = 'https://www.quora.com' + name + '-1'
-        return scrapy.Request(url=url, cookies=self.cookies, callback=self.parse_home_page, headers={
-            'Referer': 'https://www.quora.com/'})
+                break
 
     def parse_home_page(self, response):
         if response.status == 429:
             self.logger.info('parse home page 429 response,try again')
+            self.connect_db()
             return scrapy.Request(url=response.url, cookies=self.cookies, callback=self.parse_home_page, headers={
                 'Referer': 'https://www.quora.com/'})
         else:
@@ -107,7 +94,7 @@ class FollowersSpider(scrapy.Spider):
                     num = 0
                     pass
                 if num:
-                    url = response.url.replace(str(num), str(num + 1))
+                    url = response.url.replace(str(num), str(num - 1))
                     yield scrapy.Request(url=url, cookies=self.cookies, callback=self.parse_home_page, headers={
                         'Referer': 'https://www.quora.com/'})
             else:

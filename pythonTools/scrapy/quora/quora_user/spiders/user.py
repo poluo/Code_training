@@ -56,12 +56,10 @@ class UserSpider(scrapy.Spider):
                 one = one.replace('-' + str(num), '')
             else:
                 num = 0
-            if one not in self.passed_list:
-                self.passed_list.append(one)
-                self.logger.info('Name {} Num {}'.format(one, num))
-                yield QuoraItem({'Name': one, 'Num': num})
-                url = 'https://www.quora.com' + one + '/followers'
-                yield scrapy.Request(url, cookies=self.cookies, callback=self.parse_followers)
+            self.logger.info('Name {} Num {}'.format(one, num))
+            yield QuoraItem({'Name': one, 'Num': num})
+            url = 'https://www.quora.com' + one + '/followers'
+            yield scrapy.Request(url, cookies=self.cookies, callback=self.parse_followers)
 
 
 if __name__ == '__main__':

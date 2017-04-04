@@ -25,14 +25,12 @@ class CustomNormalMiddleware(object):
                         'm-wf-loaded': 'q-icons-q_serif',
                         '_ga': 'GA1.2.420550872.1490615030'}
         self.login_count = 0
-        self.count = 0
 
     def process_request(self, request, spider):
         request.meta['count'] = self.login_count
 
     def process_response(self, request, response, spider):
         if response.status == 429:
-            log.info(response.url)
             try:
                 count = request.meta['count']
             except AttributeError as e:
@@ -41,13 +39,14 @@ class CustomNormalMiddleware(object):
             log.info('login count = {}'.format(self.login_count))
             log.info('count = {}'.format(count))
             if count == self.login_count:
+                self.login_count += 1
                 log.info('429 retry login')
                 cmd_str = "adsl-stop"
                 os.system(cmd_str)
                 time.sleep(0.1)
                 cmd_str = "adsl-start"
                 os.system(cmd_str)
-                time.sleep(1)
+                time.sleep(0.2)
                 tmp = requests.post('https://www.quora.com/webnode2/server_call_POST', data=self.frmdata,
                                     cookies=self.cookies)
                 if tmp.status_code == 200:

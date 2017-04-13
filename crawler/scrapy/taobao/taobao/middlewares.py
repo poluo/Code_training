@@ -5,10 +5,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 import time
-from twisted.internet.error import TimeoutError, ConnectionRefusedError, ConnectError, ConnectionLost
-from scrapy.core.downloader.handlers.http11 import TunnelError
 import logging as log
 import sys
+from scrapy.exceptions import CloseSpider
 
 
 class DownloaderMiddleware(object):
@@ -16,7 +15,7 @@ class DownloaderMiddleware(object):
         path = "C:\Program Files (x86)\Google\Chrome\chromedriver.exe"
         self.driver = webdriver.Chrome(executable_path=path)  # chrome not work in linux
         # self.driver = webdriver.PhantomJS()
-        self.ERRORS = (TimeoutError, ConnectionRefusedError, ConnectError, ConnectionLost, TunnelError)
+        self.first_time = True
 
     def process_request(self, request, spider):
         if request.meta.get('send_keyword'):
@@ -24,38 +23,48 @@ class DownloaderMiddleware(object):
             element.clear()
             element.send_keys(request.meta.get('content'))
             element.send_keys(Keys.RETURN)
-
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, '#mainsrp-pager > div > div > div > ul > li.item.next > a'))
+            )
             body = self.driver.page_source
             response = HtmlResponse(url=self.driver.current_url, body=body, request=request, encoding='utf8')
             return response
         elif request.meta.get('click'):
-            count = 0
-            while True:
-                count += 1
-                try:
-                    element = self.driver.find_element_by_css_selector(request.meta.get('selector'))
-                    element.click()
-                    WebDriverWait(self.driver, 10).until(
-                        EC.presence_of_element_located(
-                            (By.CSS_SELECTOR, request.meta.get('selector')))
-                    )
-                    time.sleep(0.5)
-                except Exception as e:
-                    log.info('WebDriverWait timeout {}'.format(e))
-                    self.driver.get(request.url)
-                    WebDriverWait(self.driver, 20).until(
-                        EC.presence_of_element_located(
-                            (By.CSS_SELECTOR, request.meta.get('selector')))
-                    )
-                    time.sleep(2)
-                else:
-                    if request.url != self.driver.current_url:
-                        break
+            if self.first_time:
+                element = self.driver.find_element_by_css_selector(request.meta.get('selector'))
+                element.click()
+                WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.CSS_SELECTOR, '#mainsrp-itemlist > div > div > div:nth-child(1) > div'))
+                )
+                time.sleep(1)
+                self.first_time = False
+            else:
+                url = self.get_next_page_url(request.url)
+                if not url:
+                    log.info('100 pages already crawled')
+                    sys.exit("SHUT DOWN EVERYTHING!")
+                count = 0
+                while True:
+                    try:
+                        self.driver.get(url)
+                        WebDriverWait(self.driver, 10).until(
+                            EC.presence_of_element_located(
+                                (By.CSS_SELECTOR, '#mainsrp-itemlist > div > div > div:nth-child(1) > div'))
+                        )
+                    except Exception as e:
+                        if 'TimeoutException' in str(e):
+                            count += 1
+                            time.sleep(1)
+                            log.info('TimeoutException in get next page')
+                            pass
+                        if count > 3:
+                            break
                     else:
-                        log.info('same url in middleware,count = {}'.format(count))
-                finally:
-                    if count > 3:
                         break
+                # time.sleep(0.5)
+
             body = self.driver.page_source
             response = HtmlResponse(url=self.driver.current_url, body=body, request=request, encoding='utf8')
             return response
@@ -70,22 +79,23 @@ class DownloaderMiddleware(object):
             return response
 
     def process_exception(self, request, exception, spider):
-        if 'Unable to locate element' in str(exception):
-            log.info('100 pages already crawled')
-            sys.exit("SHUT DOWN EVERYTHING!")
-        else:
+        if 'timeout' in str(exception):
             log.info('process exception {}'.format(exception))
-            self.driver.get("https://www.taobao.com/")
+            self.driver.get(request.url)
             WebDriverWait(self.driver, 5).until(
                 EC.presence_of_element_located(
                     (By.CSS_SELECTOR, 'div.search-combobox > div.search-combobox-input-wrap > input'))
             )
             time.sleep(1)
-            num = request.url.split('=')[-1]
-            request.url.replace(num, str(int(num) + 44))
+            request.url = self.get_next_page_url(request.url)
             self.driver.get(request.url)
+            log.info('unexcepted exception {}'.format(exception))
+        elif 'SHUT DOWN EVERYTHING':
+            log.info('close spider')
 
-            if 'unknown error' in str(exception):
-                log.info('exception {}'.format(exception))
-            else:
-                log.info('unexcepted exception {}'.format(exception))
+    def get_next_page_url(self, url):
+        num = url.split('=')[-1]
+        if int(num) > 44*100:
+            return None
+        url = url.replace(num, str(int(num) + 44))
+        return url

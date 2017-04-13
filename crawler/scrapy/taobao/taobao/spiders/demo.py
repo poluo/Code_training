@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import scrapy
 from taobao.items import GoodsItem
+from taobao.settings import SPIDER_CONTENT
 
 
 class DemoSpider(scrapy.Spider):
@@ -11,7 +12,7 @@ class DemoSpider(scrapy.Spider):
 
     def parse(self, response):
         selector = 'div.search-combobox > div.search-combobox-input-wrap > input'
-        content = '服务器'
+        content = SPIDER_CONTENT
         search_key = response.css(selector).extract_first()
         if search_key:
             self.logger.info('Found search key')
@@ -21,6 +22,8 @@ class DemoSpider(scrapy.Spider):
     def parse_content(self, response):
         my_goods = GoodsItem()
         goods_list = response.css('#mainsrp-itemlist > div > div > div:nth-child(1) > div')
+        if not goods_list:
+            self.logger.info("ERROR")
         for goods in goods_list:
             name = goods.css('div.row.row-2.title > a').extract_first()
             try:

@@ -1,23 +1,20 @@
 # -*- coding: utf-8 -*-
 import scrapy
 from taobao.items import GoodsItem
-from taobao.settings import SPIDER_CONTENT
-
+from taobao.settings import SPIDER_CONTENTS
 
 class DemoSpider(scrapy.Spider):
     name = "demo"
     allowed_domains = ["taobao.com"]
-    start_urls = ['https://www.taobao.com/']
     count = 0
 
-    def parse(self, response):
+    def start_requests(self):
         selector = 'div.search-combobox > div.search-combobox-input-wrap > input'
-        content = SPIDER_CONTENT
-        search_key = response.css(selector).extract_first()
-        if search_key:
-            self.logger.info('Found search key')
-        yield scrapy.Request(url=response.url, callback=self.parse_content,
-                             meta={'send_keyword': 1, 'content': content, 'selector': selector, 'selenium': 1})
+        for one in SPIDER_CONTENTS:
+            content = one
+            self.logger.info(content)
+            yield scrapy.Request(url='https://www.taobao.com/', callback=self.parse_content,dont_filter=True,
+                                 meta={'send_keyword': 1, 'content': content, 'selector': selector, 'selenium': 1})
 
     def parse_content(self, response):
         my_goods = GoodsItem()
@@ -42,8 +39,7 @@ class DemoSpider(scrapy.Spider):
         next_page = '#mainsrp-pager > div > div > div > ul > li.item.next > a'
         if next_page:
             self.count += 1
-            self.logger.info('next page {}'.format(self.count))
-            self.logger.info('url = {}'.format(response.url))
+            self.logger.info('count {}, url = {}'.format(self.count,response.url))
             yield scrapy.Request(url=response.url, callback=self.parse_content,
                                  meta={'click': 1, 'selector': next_page, 'selenium': 1})
         else:

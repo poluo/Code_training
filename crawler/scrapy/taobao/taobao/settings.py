@@ -8,7 +8,8 @@
 #     http://doc.scrapy.org/en/latest/topics/settings.html
 #     http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
 #     http://scrapy.readthedocs.org/en/latest/topics/spider-middleware.html
-SPIDER_CONTENT = '机械键盘'
+SPIDER_CONTENTS = ['thinkpad','t470','t470']
+
 
 BOT_NAME = 'taobao'
 

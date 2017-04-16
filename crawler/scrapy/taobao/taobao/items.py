@@ -10,7 +10,11 @@ import scrapy
 
 class GoodsItem(scrapy.Item):
     name = scrapy.Field()
+    link = scrapy.Field()
+    image = scrapy.Field()
     price = scrapy.Field()
     shop_name = scrapy.Field()
     shop_url = scrapy.Field()
+    shop_location = scrapy.Field()
     sales = scrapy.Field()
+

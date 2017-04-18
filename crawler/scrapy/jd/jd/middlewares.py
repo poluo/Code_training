@@ -5,13 +5,12 @@ import random
 
 class CustomNormalMiddleware(object):
     def __init__(self):
-        self.cookies = {'__jdv': '122270672|direct|-|none|-|1492328119353', 'ipLoc-djd': '1-72-4137-0', 'areaId': '1',
-                        'listck': '0b15ebdd1717df092dc803a111f3e90d',
-                        '__jda': '122270672.14923281193521819411447.1492328119.1492328119.1492328119.1',
-                        '__jdb': '122270672.4.14923281193521819411447|1.1492328119', '__jdc': '122270672',
-                        '__jdu': '14923281193521819411447',
-                        ' o2-webp': 'true',
-                        '3AB9D23F7A4B3C9B': 'POP3RB26NQEQKDRSJ6CVJUPMWCZTQIXTIEISD7CAF3UOGEEPI2VTWX7KTRBUM4DMB4X4CABVDPATZ6X4ER4U4VM7GE'}
+        self.cookies = {'__jdv': '122270672|direct|-|none|-|1492518342585', 'ipLoc-djd': '1-72-4137-0', 'areaId': '1',
+                         'listck': '6540956f5e73b2a6cfc055a9a6ec1055',
+                         '__jda': '122270672.1492518342584482870352.1492518343.1492518343.1492518343.1',
+                         '__jdb': '122270672.4.1492518342584482870352|1.1492518343', '__jdc': '122270672',
+                         '__jdu': '1492518342584482870352',
+                         '3AB9D23F7A4B3C9B': 'WDHQLJX6VWBVJJXVREUHFRGVBG4GVXSK4IDXNH7ESUNO3F2JPCKO46I6472NNOFFTOYQZEU265HMUZKNXDW635METQ'}
 
     def process_request(self, request, spider):
         request.headers['User-Agent'] = random.choice(AGENTS)
@@ -40,9 +39,3 @@ class CustomNormalMiddleware(object):
                 self.cookies[':path'] = '/'
                 self.cookies[':scheme'] = 'https'
             request.cookies = self.cookies
-
-        # def process_response(self, request, response, spider):
-        #     pass
-        #
-        # def process_exception(self, request, exception, spider):
-        #     pass

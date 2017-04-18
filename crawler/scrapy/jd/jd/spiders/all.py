@@ -23,11 +23,12 @@ class AllSpider(scrapy.Spider):
     def parse_content(self, response):
         url_list = self.process_data(response)
         for url in url_list:
-            path = url.replace('https://list.jc.com', '')
-            yield scrapy.Request(url=url, callback=self.parse_page,
-                                 meta={'authority': 'list.jd.com', 'method': 'GET',
-                                       'path': path,
-                                       'scheme': 'https', 'cookies': True})
+            if 'act' not in url:
+                path = url.replace('https://list.jd.com', '')
+                yield scrapy.Request(url=url, callback=self.parse_page,
+                                     meta={'authority': 'list.jd.com', 'method': 'GET',
+                                           'path': path,
+                                           'scheme': 'https', 'cookies': True})
 
     def parse_page(self, response):
         item_list = response.css('#plist > ul > li > div')
@@ -62,30 +63,12 @@ class AllSpider(scrapy.Spider):
 
         next_page = response.css('#J_bottomPage > span.p-num > a.pn-next::attr(href)').extract_first()
         if next_page:
-            next_page = self.check_page_num(response.url,next_page)
             self.logger.info('next {}'.format(next_page))
             url = ''.join(['https://list.jd.com', next_page])
             yield scrapy.Request(url=url, callback=self.parse_page,
                                  meta={'authority': 'list.jd.com', 'method': 'GET',
                                        'path': next_page,
                                        'scheme': 'https', 'cookies': True})
-
-    def check_page_num(self, url, next_page):
-        try:
-            page_num = int(next_page.split('&')[1].replace('page=', ''))
-        except ValueError:
-            page_num = int(next_page.split('&')[2].replace('page=', ''))
-        try:
-            last_page_num = int(url.split('&')[1].replace('page=', ''))
-        except IndexError:
-            last_page_num = 1
-        except ValueError:
-            return next_page.replace('page=' + str(page_num), 'page=' + str(page_num + 1))
-
-        if page_num > last_page_num:
-            return next_page
-        else:
-            return next_page.replace('page=' + str(page_num), 'page=' + str(page_num + 1))
 
     def parse_one(self, response):
         data = response.meta.get('data')

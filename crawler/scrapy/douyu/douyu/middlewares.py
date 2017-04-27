@@ -22,18 +22,6 @@ class CustomNormalMiddleware(object):
         request.headers['Upgrade-Insecure-Requests'] = 1
 
         try:
-            method = request.meta.get('method')
-        except Exception as e:
-            log.info(e)
-            method = None
-        if method == 'post':
-            del request.headers['Upgrade-Insecure-Requests']
-            request.headers['Host'] = 'dotcounter.douyucdn.cn'
-            request.headers['Content-Length'] = '507'
-            request.headers['referer'] = 'https://www.douyu.com/directory/game/wzry'
-            request.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
-
-        try:
             cookies_enable = request.meta.get('cookies')
         except Exception as e:
             log.info(e)

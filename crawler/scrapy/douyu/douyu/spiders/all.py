@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import scrapy
 import re
-import json
 import requests
 from douyu.settings import MY_HEADERS
 import time
+from douyu.items import DouyuItem
 
 
 class AllSpider(scrapy.Spider):
@@ -13,7 +13,6 @@ class AllSpider(scrapy.Spider):
     start_urls = (
         'https://www.douyu.com/directory#',
     )
-    live_data = []
 
     def parse(self, response):
         unit_list = response.css('li.unit')
@@ -25,6 +24,7 @@ class AllSpider(scrapy.Spider):
             unit['data_tid'] = one.css('::attr(data-tid)').extract_first()
             unit['pic_href'] = one.css('img::attr(src)').extract_first()
             yield scrapy.Request(url='https://www.douyu.com' + url, callback=self.parse_directory)
+            break
 
     def parse_directory(self, response):
         live_list = response.css('#live-list-contentbox > li')
@@ -43,9 +43,8 @@ class AllSpider(scrapy.Spider):
             live['tag'] = one.css('a > div > div.mes-tit > span.tag.ellipsis::text').extract_first()
             live['owner'] = one.css('a > div.mes > P > span.dy-name.ellipsis.fl::text').extract_first()
             live['num'] = one.css('a > div.mes > P > span.dy-num.fr::text').extract_first()
-            if live not in self.live_data:
-                self.live_data.append(live)
-                self.logger.debug(live)
+            yield scrapy.Request(url='https://www.douyu.com' + live['href'], meta={'data': live, 'selenium': True},
+                                 callback=self.parse_page)
 
         if 'page' not in response.url:
             num = 2
@@ -64,23 +63,48 @@ class AllSpider(scrapy.Spider):
                                                      '_dys_refer_action_code': 'click_pagecode'},
                                  callback=self.parse_directory)
 
-    @classmethod
+    def parse_page(self, response):
+        data = response.meta['data']
+        week_list = []
+        tmp_list = response.css('#js-fans-rank > div > div.f-con > div:nth-child(1) > ul > li')
+        for one in tmp_list:
+            uid = one.css('a::attr(rel)').extract_first()
+            level = one.css('a::attr(data-level)').extract_first()
+            name = one.css('a > span:nth-child(2)::attr(title)').extract_first()
+            if not name:
+                name = one.css('a > span:nth-child(1)::attr(title)').extract_first()
+            week_list.append({'uid': uid, 'level': level, 'name': name})
+        data['week'] = week_list
+
+        all_list = []
+        tmp_list = response.css('#js-fans-rank > div > div.f-con > div:nth-child(2) > ul > li')
+        for one in tmp_list:
+            uid = one.css('a::attr(rel)').extract_first()
+            level = one.css('a::attr(data-level)').extract_first()
+            name = one.css('a > span:nth-child(2)::attr(title)').extract_first()
+            if not name:
+                name = one.css('a > span:nth-child(1)::attr(title)').extract_first()
+            all_list.append({'uid': uid, 'level': level, 'name': name})
+        data['all'] = all_list
+        yield DouyuItem(data)
+
     def post_data(self, url):
         t = time.time()
         t = str(int(t * 1000))
-        multi = '[{"d":"","i":0,"rid":0,"u":"https://www.douyu.com/directory/game/wzry",' \
-                '\"ru":"","ac":"click_pagecode","rpc":"","pc":"page_live","pt":1493209129299,' \
-                '"oct":{},' \
-                '"dur":0,"pro":"host_site","ct":"web","e":{"type":2,"pg":3,"rac":"click_pagecode"}}]'
-        formdata = {'multi': multi, 'v': '1.5'}
-        res = requests.post(url='https://dotcounter.douyucdn.cn/deliver/fish2', data=formdata, verify=False,
-                            headers=MY_HEADERS)
+        multi = [{"d": "", "i": 0, "rid": 0, "u": "https://www.douyu.com/directory/game/wzry",
+                  "ru": "", "ac": "click_pagecode", "rpc": "", "pc": "page_live", "pt": 1493209129299,
+                  "oct": t, "dur": 0, "pro": "host_site", "ct": "web",
+                  "e": {"type": 2, "pg": 3, "rac": "click_pagecode"}}]
+        formdata = {'multi': str(multi), 'v': '1.5'}
+        res = requests.post(url='https://dotcounter.douyucdn.cn/deliver/fish2', data=formdata, headers=MY_HEADERS,
+                            verify=False)
+        self.logger.debug(res.text)
 
     def closed(self, reason):
         self.logger.info(reason)
-        self.logger.info(len(self.live_data))
 
-    if __name__ == '__main__':
-        from scrapy.cmdline import execute
 
-        execute()
+if __name__ == '__main__':
+    from scrapy.cmdline import execute
+
+    execute()

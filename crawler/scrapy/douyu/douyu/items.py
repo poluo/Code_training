@@ -10,5 +10,10 @@ import scrapy
 
 class DouyuItem(scrapy.Item):
     # define the fields for your item here like:
-    # name = scrapy.Field()
-    pass
+    href = scrapy.Field()
+    title = scrapy.Field()
+    tag = scrapy.Field()
+    owner = scrapy.Field()
+    num = scrapy.Field()
+    week = scrapy.Field()
+    all = scrapy.Field()

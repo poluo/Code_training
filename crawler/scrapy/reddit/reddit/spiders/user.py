@@ -8,9 +8,25 @@ from reddit.items import UserItem
 class UserSpider(scrapy.Spider):
     name = "user"
     allowed_domains = ["reddit.com"]
-    start_urls = ['https://www.reddit.com/r/worldnews/', 'https://www.reddit.com/r/funny/']
+    start_urls = ['https://www.reddit.com/subreddits/']
+    count = 0
 
     def parse(self, response):
+        res = response.css('#siteTable > div > div > p.titlerow > a::attr(href)').extract()
+        for one in res:
+            path = one.replace('https://www.reddit.com', '')
+            yield Request(url=one, callback=self.parse_tag, meta={'cookies': True, 'path': path})
+        next_page = response.css(
+            '#siteTable > div.nav-buttons > span > span.next-button > a::attr(href)').extract_first()
+        self.count += 1
+        if next_page and self.count < 10:
+            path = next_page.replace('https://www.reddit.com', '')
+            yield Request(url=next_page, callback=self.parse, meta={'cookies': True, 'path': path})
+        else:
+            self.logger.info('count = {}'.format(self.count))
+            self.logger.info('NO next page in parse')
+
+    def parse_tag(self, response):
         res = LinkExtractor(allow=('.*/user/.*'), allow_domains='www.reddit.com').extract_links(response)
         for one in res:
             if one.text != 'Click here!':
@@ -26,9 +42,9 @@ class UserSpider(scrapy.Spider):
             '#siteTable > div.nav-buttons > span > span.next-button > a::attr(href)').extract_first()
         if next_page:
             path = next_page.replace('https://www.reddit.com', '')
-            yield Request(url=next_page, callback=self.parse, meta={'cookies': True, 'path': path})
+            yield Request(url=next_page, callback=self.parse_tag, meta={'cookies': True, 'path': path})
         else:
-            self.logger.info('No next page')
+            self.logger.info('No next page in parse_tag')
 
     def parse_comment(self, response):
         # Do not show all comment
@@ -67,6 +83,9 @@ class UserSpider(scrapy.Spider):
 
             res.append(data)
         yield UserItem({'user': user, 'info': res})
+
+    def closed(self, reason):
+        pass
 
 
 if __name__ == '__main__':

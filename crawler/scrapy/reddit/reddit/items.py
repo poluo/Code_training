@@ -8,7 +8,7 @@
 import scrapy
 
 
-class RedditItem(scrapy.Item):
-    # define the fields for your item here like:
-    # name = scrapy.Field()
+class UserItem(scrapy.Item):
+    user = scrapy.Field()
+    info = scrapy.Field()
     pass

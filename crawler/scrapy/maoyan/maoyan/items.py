@@ -8,7 +8,8 @@
 import scrapy
 
 
-class MaoyanItem(scrapy.Item):
+class MovieOverallItem(scrapy.Item):
     # define the fields for your item here like:
-    # name = scrapy.Field()
-    pass
+    name = scrapy.Field()
+    href = scrapy.Field()
+    

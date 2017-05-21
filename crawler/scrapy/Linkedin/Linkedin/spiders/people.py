@@ -1,11 +1,21 @@
 # -*- coding: utf-8 -*-
 import scrapy
-from lxml import etree
+import re
 
 
 class PeopleSpider(scrapy.Spider):
     name = "people"
     allowed_domains = ["linkedin.com"]
+    first_name = re.compile('"firstName":"(.*?)"')
+    last_name = re.compile('"lastName":"(.*?)"')
+    summary = re.compile('"summary":"(.*?)"')
+    location_name = re.compile('"locationName":"(.*?)"')
+    occupation = re.compile('"headline":"(.*?)"')
+    educations = re.compile('(\{[^\{]*?profile\.Education"[^\}]*?\})')
+    school_name = re.compile('"schoolName":"(.*?)"')
+    position = re.compile('(\{[^\{]*?profile\.Position"[^\}]*?\})')
+    company_name = re.compile('"companyName":"(.*?)"')
+    public_id = re.compile('"publicIdentifier":"[^{}]*",')
 
     def start_requests(self):
         return [scrapy.Request(url='https://www.linkedin.com/uas/login', meta={'cookiejar': 1},
@@ -47,19 +57,67 @@ class PeopleSpider(scrapy.Spider):
             'csrfToken': csrf_token,
             'sourceAlias': source_alias
         }
-        self.logger.info(post_data)
         response = response.replace(url='https://www.linkedin.com/uas/login-submit')
-        self.logger.info(response.url)
         return scrapy.FormRequest.from_response(response, formdata=post_data, callback=self.after_login,
                                                 meta={'cookiejar': response.meta['cookiejar']})
 
     def after_login(self, response):
-        self.logger.info(response.status)
         yield scrapy.Request(url='http://www.linkedin.com/feed/', callback=self.parse_home,
                              meta={'cookiejar': response.meta['cookiejar']})
 
     def parse_home(self, response):
-        pass
+        text = response.text.replace('&quot;', '"')
+        res = self.public_id.findall(text)
+        for one in res[1:]:
+            one = re.split(':', one.split(',')[0])[1][1:-1]
+            yield scrapy.Request(url='http://www.linkedin.com/in/' + one + '/', callback=self.parse_people,
+                                 meta={'cookiejar': response.meta['cookiejar']})
+
+    def parse_people(self, response):
+        text = response.text
+        content = text.replace('&quot;', '"')
+        profile_txt = ' '.join(re.findall('(\{[^\{]*?profile\.Profile"[^\}]*?\})', content))
+        res = {}
+        first_name = self.first_name.findall(profile_txt)
+        last_name = self.last_name.findall(profile_txt)
+        if first_name and last_name:
+            res['name'] = '{} {}'.format(last_name[0], first_name[0])
+            res['url'] = response.url
+            summary = self.summary.findall(profile_txt)
+            if summary:
+                res['summary'] = summary[0].replace('&#92;n', '')
+            occupation = self.occupation.findall(profile_txt)
+            if occupation:
+                res['occupation'] = occupation[0]
+
+            location_name = self.location_name.findall(profile_txt)
+            if location_name:
+                res['location'] = location_name[0]
+
+            educations = self.educations.findall(content)
+            if educations:
+                res['education'] = ''
+            for one in educations:
+                school_name = self.school_name.findall(one)
+                res['education'] += school_name[0]
+
+            position = self.position.findall(content)
+            if position:
+                res['position'] = ''
+                for one in position:
+                    company_name = self.company_name.findall(one)
+                    res['position'] += company_name[0]
+            yield res
+        else:
+            self.logger.warning('No matched')
+            self.logger.info(profile_txt)
+
+        res = self.public_id.findall(content)
+        for one in res[1:]:
+            one = re.split(':', one.split(',')[0])[1][1:-1]
+            yield scrapy.Request(url='http://www.linkedin.com/in/' + one + '/', callback=self.parse_people,
+                                 meta={'cookiejar': response.meta['cookiejar']})
+
 
 if __name__ == '__main__':
     from scrapy.cmdline import execute

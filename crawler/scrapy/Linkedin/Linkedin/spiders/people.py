@@ -2,6 +2,7 @@
 import scrapy
 import re
 import poplib
+import time
 
 
 class PeopleSpider(scrapy.Spider):
@@ -18,10 +19,20 @@ class PeopleSpider(scrapy.Spider):
     company_name = re.compile('"companyName":"(.*?)"')
     public_id = re.compile('"publicIdentifier":"[^{}]*",')
     company = re.compile('fs_miniCompany: [\d]*&')
+    cookies_enabled = None
 
     def start_requests(self):
-        return [scrapy.Request(url='https://www.linkedin.com/uas/login', meta={'cookiejar': 1},
-                               callback=self.parse)]
+        try:
+            self.cookies_enabled = self.settings.getbool('COOKIES_ENABLED')
+        except Exception as e:
+            self.cookies_enabled = False
+            self.logger.warning(e)
+        if self.cookies_enabled:
+            self.logger.info('cookies enabled')
+            return [scrapy.Request(url='http://www.linkedin.com/feed/', callback=self.parse_home)]
+        else:
+            return [
+                scrapy.Request(url='https://www.linkedin.com/uas/login', meta={'cookiejar': 1}, callback=self.parse)]
 
     def parse(self, response):
         account = 'xxx'
@@ -46,27 +57,37 @@ class PeopleSpider(scrapy.Spider):
         if not from_email:
             from_email = ''
         post_data = {
-            'isJsEnabled': is_js_enabled,
-            'source_app': source_app,
-            'tryCount': try_count,
-            'clickedSuggestion': clicked_suggestion,
+            # 'source_app': source_app,
+            # 'tryCount': try_count,
+            # 'clickedSuggestion': clicked_suggestion,
             'session_key': account,
             'session_password': passwd,
-            'signin': sgign,
-            'session_redirect': session_redirect,
-            'trk': trk,
+            'isJsEnabled': is_js_enabled,
+            # 'signin': sgign,
+            # 'session_redirect': session_redirect,
+            # 'trk': trk,
             'loginCsrfParam': login_csrf_param,
-            'fromEmail': from_email,
-            'csrfToken': csrf_token,
+            # 'fromEmail': from_email,
+            # 'csrfToken': csrf_token,
             'sourceAlias': source_alias
         }
+        self.logger.info(post_data)
         response = response.replace(url='https://www.linkedin.com/uas/login-submit')
         return scrapy.FormRequest.from_response(response, formdata=post_data, callback=self.after_login,
                                                 meta={'cookiejar': response.meta['cookiejar']})
 
     def after_login(self, response):
         if 'consumer-email-challenge' in response.url:
-            code = self.get_vcode()
+            if not self.settings.getbool('AUTO_CODE'):
+                self.logger.warning('no AUTO_CODE,email challenge happened')
+                return None
+            while True:
+                code = input('code:')
+                # code = self.get_vcode()
+                time.sleep(1)
+                if code:
+                    print(code)
+                    break
             tmp = response.css('#uas-consumer-ato-pin-challenge')
             sgign = '提交'
             challenge_id = tmp.css('#security-challenge-id-ATOPinChallengeForm::attr(value)').extract_first()
@@ -94,12 +115,26 @@ class PeopleSpider(scrapy.Spider):
     def parse_home(self, response):
         text = response.text.replace('&quot;', '"')
         res = self.public_id.findall(text)
-        self.logger.info(text)
+        self.logger.info(res)
+        flag = False
+
+        if self.cookies_enabled:
+            meta = {}
+        else:
+            meta = {'cookiejar': response.meta['cookiejar']}
+
         for one in res[1:]:
             self.logger.info(one)
+            flag = True
             one = re.split(':', one.split(',')[0])[1][1:-1]
             yield scrapy.Request(url='http://www.linkedin.com/in/' + one + '/', callback=self.parse_people,
                                  meta={'cookiejar': response.meta['cookiejar']})
+
+        if not flag:
+            self.logger.warning('No data in feed')
+            yield scrapy.Request(url='http://www.linkedin.com/in/' + 'sha-feng-85b3ba32' + '/',
+                                 callback=self.parse_people)
+            # self.logger.info(text)
 
     def parse_people(self, response):
         text = response.text
@@ -141,16 +176,21 @@ class PeopleSpider(scrapy.Spider):
             self.logger.info(profile_txt)
 
         company = self.company.findall(content)
+
         self.logger.info(company)
+
+        if self.cookies_enabled:
+            meta = {}
+        else:
+            meta = {'cookiejar': response.meta['cookiejar']}
 
         res = self.public_id.findall(content)
         for one in res[1:]:
             one = re.split(':', one.split(',')[0])[1][1:-1]
-            yield scrapy.Request(url='http://www.linkedin.com/in/' + one + '/', callback=self.parse_people,
-                                 meta={'cookiejar': response.meta['cookiejar']})
+            yield scrapy.Request(url='http://www.linkedin.com/in/' + one + '/', callback=self.parse_people, meta=meta)
 
     def get_vcode(self):
-        mail_host = 'xx'
+        mail_host = 'pop.163.com'
         mail_user = 'xx'
         mail_passwd = 'xx'
         # 连接到POP3服务器:

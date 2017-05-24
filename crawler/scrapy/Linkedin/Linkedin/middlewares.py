@@ -3,7 +3,16 @@ import logging as logger
 
 class CustomNormalMiddleware(object):
     def __init__(self):
-        self.cookies = None
+        res = {}
+        with open('C:/Users/poluo/PycharmProjects/Linkedin/Linkedin/Cookie', 'r') as fobj:
+            for line in fobj:
+                tmp = line.split(';')
+                for one in tmp:
+                    one = one.replace('\'', '')
+                    index = one.index('=')
+                    res[one[:index].strip()] = one[index + 1:].replace('\"', '')
+            logger.info(res)
+        self.cookies = res
 
     def process_request(self, request, spider):
         request.headers[
@@ -12,12 +21,13 @@ class CustomNormalMiddleware(object):
         request.headers['Accept-Encoding'] = 'gzip, deflate,br'
         request.headers['Accept-Language'] = 'zh-CN,zh;q=0.8,zh-TW;q=0.6'
         request.headers['Connection'] = 'keep-alive'
-        # request.headers['X-Requested-With'] = 'XMLHttpRequest'
         request.headers['Host'] = 'www.linkedin.com'
-        # request.headers['Origin'] ='https://www.linkedin.com'
         request.headers['Referer'] = 'https://www.linkedin.com/'
-        # request.headers['X-IsAJAXForm'] = '1'
-        # request.headers['X-LinkedIn-traceDataContext'] = 'X-LI-ORIGIN-UUID=oJeAl5wuwBRADY514yoAAA=='
         # if self.cookies:
-        #     request.cookies = self.cookies
-
+        #     pass
+        request.cookies = self.cookies
+        # else:
+        #     self.cookies = request.headers.getlist('Cookie')
+        #     with open('Cookie', 'w') as fobj:
+        #         fobj.write(str(self.cookies))
+        #     logger.info(self.cookies)

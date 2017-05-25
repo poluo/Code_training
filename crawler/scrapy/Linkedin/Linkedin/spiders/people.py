@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 import scrapy
 import re
-import poplib
-import time
 
 
 class PeopleSpider(scrapy.Spider):
@@ -19,103 +17,17 @@ class PeopleSpider(scrapy.Spider):
     company_name = re.compile('"companyName":"(.*?)"')
     public_id = re.compile('"publicIdentifier":"[^{}]*",')
     company = re.compile('fs_miniCompany: [\d]*&')
-    cookies_enabled = None
+    custom_settings = {
+        'DOWNLOADER_MIDDLEWARES': {'Linkedin.middlewares.CrawlMiddleware': 543, },
+        'DOWNLOAD_DELAY': 1,
+    }
 
     def start_requests(self):
-        try:
-            self.cookies_enabled = self.settings.getbool('COOKIES_ENABLED')
-        except Exception as e:
-            self.cookies_enabled = False
-            self.logger.warning(e)
-        if self.cookies_enabled:
-            self.logger.info('cookies enabled')
-            return [scrapy.Request(url='http://www.linkedin.com/feed/', callback=self.parse_home)]
-        else:
-            return [
-                scrapy.Request(url='https://www.linkedin.com/uas/login', meta={'cookiejar': 1}, callback=self.parse)]
-
-    def parse(self, response):
-        account = 'xxx'
-        passwd = 'xx'
-        tmp = response.css('#login')
-        is_js_enabled = tmp.css('input[type="hidden"]:nth-child(1)::attr(value)').extract_first()
-        source_app = tmp.css('input[type="hidden"]:nth-child(2)::attr(value)').extract_first()
-        try_count = tmp.css('#tryCount::attr(value)').extract_first()
-        clicked_suggestion = tmp.css('#clickedSuggestion::attr(value)').extract_first()
-        session_redirect = tmp.css('#session_redirect-login::attr(value)').extract_first()
-        trk = tmp.css('#trk::attr(value)').extract_first()
-        login_csrf_param = tmp.css('#loginCsrfParam-login::attr(value)').extract_first()
-        from_email = tmp.css('#fromEmail::attr(value)').extract_first()
-        csrf_token = tmp.css('#csrfToken-login::attr(value)').extract_first()
-        source_alias = tmp.css('#sourceAlias-login::attr(value)').extract_first()
-        sgign = tmp.css('div.form-buttons > input::attr(value)').extract_first()
-
-        if not trk:
-            trk = ''
-        if not login_csrf_param:
-            login_csrf_param = ''
-        if not from_email:
-            from_email = ''
-        post_data = {
-            # 'source_app': source_app,
-            # 'tryCount': try_count,
-            # 'clickedSuggestion': clicked_suggestion,
-            'session_key': account,
-            'session_password': passwd,
-            'isJsEnabled': is_js_enabled,
-            # 'signin': sgign,
-            # 'session_redirect': session_redirect,
-            # 'trk': trk,
-            'loginCsrfParam': login_csrf_param,
-            # 'fromEmail': from_email,
-            # 'csrfToken': csrf_token,
-            'sourceAlias': source_alias
-        }
-        self.logger.info(post_data)
-        response = response.replace(url='https://www.linkedin.com/uas/login-submit')
-        return scrapy.FormRequest.from_response(response, formdata=post_data, callback=self.after_login,
-                                                meta={'cookiejar': response.meta['cookiejar']})
-
-    def after_login(self, response):
-        if 'consumer-email-challenge' in response.url:
-            if not self.settings.getbool('AUTO_CODE'):
-                self.logger.warning('no AUTO_CODE,email challenge happened')
-                return None
-            while True:
-                code = input('code:')
-                # code = self.get_vcode()
-                time.sleep(1)
-                if code:
-                    print(code)
-                    break
-            tmp = response.css('#uas-consumer-ato-pin-challenge')
-            sgign = '提交'
-            challenge_id = tmp.css('#security-challenge-id-ATOPinChallengeForm::attr(value)').extract_first()
-            dts = tmp.css('#dts-ATOPinChallengeForm::attr(value)').extract_first()
-            origSourceAlias = tmp.css('#origSourceAlias-ATOPinChallengeForm::attr(value)').extract_first()
-            csrfToken = tmp.css('#csrfToken-ATOPinChallengeForm::attr(value)').extract_first()
-            sourceAlias = tmp.css('#sourceAlias-ATOPinChallengeForm::attr(value)').extract_first()
-            post_data = {
-                'PinVerificationForm_pinParam': code,
-                'signin': sgign,
-                'security-challenge-id': challenge_id,
-                'dts': dts,
-                'origSourceAlias': origSourceAlias,
-                'csrfToken': csrfToken,
-                'sourceAlias': sourceAlias,
-            }
-            self.logger.info(post_data)
-            response = response.replace(url='https://www.linkedin.com/uas/ato-pin-challenge-submit')
-            yield scrapy.FormRequest.from_response(response, formdata=post_data, callback=self.after_login,
-                                                   meta={'cookiejar': response.meta['cookiejar']})
-        else:
-            yield scrapy.Request(url='http://www.linkedin.com/feed/', callback=self.parse_home,
-                                 meta={'cookiejar': response.meta['cookiejar']})
+        return [scrapy.Request(url='http://www.linkedin.com/feed/', callback=self.parse_home)]
 
     def parse_home(self, response):
         text = response.text.replace('&quot;', '"')
         res = self.public_id.findall(text)
-        self.logger.info(res)
         flag = False
 
         if self.cookies_enabled:
@@ -132,9 +44,6 @@ class PeopleSpider(scrapy.Spider):
 
         if not flag:
             self.logger.warning('No data in feed')
-            yield scrapy.Request(url='http://www.linkedin.com/in/' + 'sha-feng-85b3ba32' + '/',
-                                 callback=self.parse_people)
-            # self.logger.info(text)
 
     def parse_people(self, response):
         text = response.text
@@ -188,35 +97,6 @@ class PeopleSpider(scrapy.Spider):
         for one in res[1:]:
             one = re.split(':', one.split(',')[0])[1][1:-1]
             yield scrapy.Request(url='http://www.linkedin.com/in/' + one + '/', callback=self.parse_people, meta=meta)
-
-    def get_vcode(self):
-        mail_host = 'pop.163.com'
-        mail_user = 'xx'
-        mail_passwd = 'xx'
-        # 连接到POP3服务器:
-        server = poplib.POP3_SSL(mail_host)
-        # 可以打开或关闭调试信息:
-        # server.set_debuglevel(1)
-        # 可选:打印POP3服务器的欢迎文字:
-        # print(server.getwelcome())
-        # 身份认证:
-        server.user(mail_user)
-        server.pass_(mail_passwd)
-        # list()返回所有邮件的编号:
-        resp, mails, octets = server.list()
-        index = len(mails)
-        # 收取最新邮件
-        resp, lines, octets = server.retr(index)
-        msg = '\r\n'.join([one.decode('utf8') for one in lines])
-        if 'security' in msg:
-            res = re.findall('\s\d{6}\s', msg)[0].strip()
-        else:
-            res = None
-        # 可以根据邮件索引号直接从服务器删除邮件:
-        # server.dele(index)
-        # 关闭连接:
-        server.quit()
-        return res
 
 
 if __name__ == '__main__':

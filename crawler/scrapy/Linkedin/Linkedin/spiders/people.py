@@ -19,7 +19,7 @@ class PeopleSpider(scrapy.Spider):
     company = re.compile('fs_miniCompany: [\d]*&')
     custom_settings = {
         'DOWNLOADER_MIDDLEWARES': {'Linkedin.middlewares.CrawlMiddleware': 543, },
-        'DOWNLOAD_DELAY': 1,
+        'DOWNLOAD_DELAY': 0,
     }
 
     def start_requests(self):
@@ -30,17 +30,11 @@ class PeopleSpider(scrapy.Spider):
         res = self.public_id.findall(text)
         flag = False
 
-        if self.cookies_enabled:
-            meta = {}
-        else:
-            meta = {'cookiejar': response.meta['cookiejar']}
-
         for one in res[1:]:
             self.logger.info(one)
             flag = True
             one = re.split(':', one.split(',')[0])[1][1:-1]
-            yield scrapy.Request(url='http://www.linkedin.com/in/' + one + '/', callback=self.parse_people,
-                                 meta={'cookiejar': response.meta['cookiejar']})
+            yield scrapy.Request(url='http://www.linkedin.com/in/' + one + '/', callback=self.parse_people,)
 
         if not flag:
             self.logger.warning('No data in feed')
@@ -88,15 +82,10 @@ class PeopleSpider(scrapy.Spider):
 
         self.logger.info(company)
 
-        if self.cookies_enabled:
-            meta = {}
-        else:
-            meta = {'cookiejar': response.meta['cookiejar']}
-
         res = self.public_id.findall(content)
         for one in res[1:]:
             one = re.split(':', one.split(',')[0])[1][1:-1]
-            yield scrapy.Request(url='http://www.linkedin.com/in/' + one + '/', callback=self.parse_people, meta=meta)
+            yield scrapy.Request(url='http://www.linkedin.com/in/' + one + '/', callback=self.parse_people)
 
 
 if __name__ == '__main__':

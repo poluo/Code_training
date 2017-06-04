@@ -14,22 +14,26 @@ BOT_NAME = 'zhihu'
 SPIDER_MODULES = ['zhihu.spiders']
 NEWSPIDER_MODULE = 'zhihu.spiders'
 
-URL = {'https://www.zhihu.com/people/ingrid-wong/activities', 'https://www.zhihu.com/people/du-du-du-95/activities',
-       'https://www.zhihu.com/people/jin-chen-yu/activities', 'https://www.zhihu.com/people/zengjiaplus/activities'}
+URL = {'https://www.zhihu.com/people/pansz/activities', 'https://www.zhihu.com/people/divinites/activities',
+       'https://www.zhihu.com/people/hua-tian-qing/activities', 'https://www.zhihu.com/people/ma-qian-zu/activities',
+       'https://www.zhihu.com/people/xlzd/activities', 'https://www.zhihu.com/people/zhouyuan/activities',
+       'https://www.zhihu.com/people/warfalcon/activities'}
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 # USER_AGENT = 'zhihu (+http://www.yourdomain.com)'
-
+COOKIES_DEBUG = False
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = False
-
+LOG_LEVEL = 'DEBUG'
+# LOG_FILE = 'log.txt'
+# LOG_STDOUT = True
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 # CONCURRENT_REQUESTS = 32
 
 # Configure a delay for requests for the same website (default: 0)
 # See http://scrapy.readthedocs.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
-DOWNLOAD_DELAY = 1
+DOWNLOAD_DELAY = 0.5
 # The download delay setting will honor only one of:
 # CONCURRENT_REQUESTS_PER_DOMAIN = 16
 # CONCURRENT_REQUESTS_PER_IP = 16

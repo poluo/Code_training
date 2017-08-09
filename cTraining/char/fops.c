@@ -4,8 +4,11 @@
 #include <linux/cdev.h>
 #include <linux/errno.h>
 #include <asm/uaccess.h>
+#include <linux/slab.h>
 
 #include "fops.h"
+#include "main.h"
+
 int scull_quantum_size = 4096;
 int scull_qset_size = 1000;
 
@@ -37,35 +40,28 @@ int scull_trim(struct scull_dev *dev)
 static struct scull_qset* scull_follow(struct scull_dev *dev,int item)
 {
 	struct scull_qset *qs = dev->data;
-	int count = 0;
-	struct scull_qset *next ,*dptr;
-	printk(KERN_ALERT NAME ": scull_follow,item %d\n",item);
+	PDEBUG(": scull_follow,item %d\n",item);
 	if(!qs)
 	{
-		printk(KERN_INFO NAME ":data is NULL\n");
+		PDEBUG(":data is NULL\n");
 		qs = dev->data = kmalloc(sizeof(struct scull_qset),GFP_KERNEL);
 		if(qs == NULL)
 			return NULL;
 		memset(qs,0,sizeof(struct scull_qset));
 	}
-	for(dptr = qs;dptr;dptr=next)
+	while(item--)
 	{
-		count ++;
-		if(!dptr->next)
+		if(!qs->next)
 		{
-			dptr->next = kmalloc(sizeof(struct scull_qset),GFP_KERNEL);
-			if(dptr->next == NULL)
+			qs->next = kmalloc(sizeof(struct scull_qset),GFP_KERNEL);
+			if(qs->next == NULL)
 				return NULL;
-			memset(dptr->next,0,sizeof(struct scull_qset));
+			memset(qs->next,0,sizeof(struct scull_qset));
 		}
-		if(count == item)
-		{
-			printk(KERN_ALERT NAME ": item found\n");
-			return dptr->next;
-		}	
-		next = dptr->next;
+		qs = qs->next;
+		continue;
 	}
-	return NULL;
+	return qs;
 }
 
 int scull_open(struct inode *inode, struct file *filp)
@@ -79,7 +75,7 @@ int scull_open(struct inode *inode, struct file *filp)
 			return -ERESTARTSYS;
 		scull_trim(dev); /* ignore errors */
 		up(&dev->sem);
-		printk(KERN_INFO NAME ":%s\n invokedn",__FUNCTION__);
+		PDEBUG(":%s invokedn",__FUNCTION__);
     }
     return 0;
 }
@@ -114,7 +110,7 @@ ssize_t scull_read(struct file *filp, char __user *buf, size_t count, loff_t *f_
 
 	dptr = scull_follow(dev,item);
 
-	printk(KERN_INFO NAME ":%s\n invokedn",__FUNCTION__);
+	PDEBUG(":%s\n invokedn",__FUNCTION__);
 
 	if(dptr == NULL || !dptr->data || !dptr->data[s_pos])
 		goto out;
@@ -131,7 +127,7 @@ ssize_t scull_read(struct file *filp, char __user *buf, size_t count, loff_t *f_
 	retval = count;
 
 	out:
-		printk(KERN_ALERT NAME ": %s out\n",__FUNCTION__);
+		PDEBUG(": %s out\n",__FUNCTION__);
 		up(&dev->sem);
 		return retval;
 }
@@ -165,7 +161,7 @@ ssize_t scull_write(struct file *filp, const char  __user *buf, size_t count,lof
 		memset(dptr->data,0,qset * sizeof(char *));
 	}
 
-	if (!dptr->data[s_pos]) 
+	if(!dptr->data[s_pos]) 
 	{
         dptr->data[s_pos] = kmalloc(quantum, GFP_KERNEL);
         if (!dptr->data[s_pos])
@@ -173,7 +169,7 @@ ssize_t scull_write(struct file *filp, const char  __user *buf, size_t count,lof
     }
     if (count > quantum - q_pos)
         count = quantum - q_pos;
-    printk(KERN_INFO NAME ":%s\n invokedn",__FUNCTION__);
+    PDEBUG(":%s invokedn",__FUNCTION__);
     if (copy_from_user(dptr->data[s_pos]+q_pos, buf, count)) 
     {
         retval = -EFAULT;
@@ -184,7 +180,7 @@ ssize_t scull_write(struct file *filp, const char  __user *buf, size_t count,lof
     if (dev->size < *f_pos)
         dev->size = *f_pos;
     out:
-    	printk(KERN_ALERT NAME ": %s out\n",__FUNCTION__);
+    	PDEBUG(": %s out\n",__FUNCTION__);
    		up(&dev->sem);
     	return retval;
 }

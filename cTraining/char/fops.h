@@ -1,8 +1,6 @@
 #ifndef _FOPS_H
 #define _FOPS_H
 
-#define NAME	"scull"
-
 struct scull_qset {
     void **data;
     struct scull_qset *next;

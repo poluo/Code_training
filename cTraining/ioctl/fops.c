@@ -6,6 +6,7 @@
 #include <asm/uaccess.h>
 #include <linux/slab.h>
 
+
 #include "fops.h"
 #include "main.h"
 
@@ -23,6 +24,7 @@ ssize_t ioctl_read(struct file *filp, char __user *buf, size_t count, loff_t *f_
 	PDEBUG(": quantum %d,qset %d\n",ioctl_dev->quantum,ioctl_dev->qset);
 	return 0;
 }
+
 
 long ioctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {

@@ -6,6 +6,7 @@
 #include <linux/errno.h>
 #include <asm/uaccess.h>
 #include <linux/slab.h>
+#include <linux/timer.h>
 
 #include "fops.h"
 #include "main.h"
@@ -19,6 +20,13 @@ static struct file_operations fops={
     .unlocked_ioctl = ioctl_ioctl,
 };
 struct ioctl_dev *ioctl_dev = NULL;
+static struct timer_list mytimer;
+
+static void mytimer_func(unsigned long data)
+{
+    printk("received timer msg,data %ld\n",data);
+    mod_timer(&mytimer, jiffies + 5*HZ);
+}
 
 static int __init ioctl_init(void)
 {
@@ -65,6 +73,11 @@ static int __init ioctl_init(void)
     	ioctl_dev = NULL;
     	PDEBUG(": Error %d in register ioctl", err);
     }
+
+    setup_timer(&mytimer, mytimer_func, 20);
+    mod_timer(&mytimer,jiffies + 1*HZ);
+    //mytimer.expires = jiffies + 1*HZ;
+    //add_timer(&mytimer);
     PDEBUG(": register ioctl success\n");
 	return 0;
 }
@@ -74,6 +87,7 @@ static void __exit ioctl_exit(void)
 	dev_t dev_id = MKDEV(ioctl_major,ioctl_minor);
 	cdev_del(&ioctl_dev->cdev);
 	unregister_chrdev_region(dev_id,DEVICE_COUNT);
+    del_timer_sync(&mytimer);
 	PDEBUG(": Bye, ioctl_exit!\n");
 }
 

@@ -5,6 +5,7 @@
 #define IOCTL_QUANTUM 	2000
 #define IOCTL_QSET 		10
 #define IOCTL_IOC_MAGIC  'k'
+
 /*
  * S means "Set" through a ptr,
  * T means "Tell" directly with the argument value

@@ -5,6 +5,7 @@
 #define ENABLE_INFO
 #define FUNCTION_NAME 	"htop"
 #define VERSION  		"0.01"
+
 typedef enum operation
 {
 	GET_HELP_INFO,
@@ -15,19 +16,6 @@ typedef enum operation
 	GET_OTHER_INFO,
 	GET_MAX_NUM,
 }operation;
-
-typedef struct meminfo
-{
-   unsigned long long int totalMem;
-   unsigned long long int usedMem;
-   unsigned long long int freeMem;
-   unsigned long long int sharedMem;
-   unsigned long long int buffersMem;
-   unsigned long long int cachedMem;
-   unsigned long long int totalSwap;
-   unsigned long long int usedSwap;
-   unsigned long long int freeSwap;
-}meminfo;
 
 #define String_startsWith(s, match) (strncmp((s),(match),strlen(match)) == 0)
 

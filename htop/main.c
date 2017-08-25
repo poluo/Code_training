@@ -13,6 +13,7 @@
 #include <getopt.h> // for getopt_long
 #include <string.h>  //strlen
 #include "main.h"
+#include "linux_info.h"
 
 operation get_operation(int argc,char *argv[])
 {
@@ -59,60 +60,17 @@ operation get_operation(int argc,char *argv[])
         }
     }
 }
-void get_memory_info(meminfo *this)
-{
-    FILE* fd = fopen(PROCMEMINFOFILE,"r");
-    size_t len = 0;
-    ssize_t read;
-    if(fd == NULL)
-    {
-        PINFO("%s open failed\n",PROCMEMINFOFILE);
-        return;
-    }
-    char *buf = NULL;
 
-    while((read = getline(&buf,&len,fd)) != -1)
-    {
-        #define tryRead(label, variable) (String_startsWith(buf, label) && sscanf(buf + strlen(label), " %32llu kB", variable))
-        switch (buf[0]) {
-          case 'M':
-             if (tryRead("MemTotal:", &this->totalMem)) {}
-             else if (tryRead("MemFree:", &this->freeMem)) {}
-             else if (tryRead("MemShared:", &this->sharedMem)) {}
-             break;
-          case 'B':
-             if (tryRead("Buffers:", &this->buffersMem)) {}
-             break;
-          case 'C':
-             if (tryRead("Cached:", &this->cachedMem)) {}
-             break;
-          case 'S':
-             switch (buf[1]) {
-             case 'w':
-                if (tryRead("SwapTotal:", &this->totalSwap)) {}
-         }
-         break;
-      }
-        #undef tryRead
-    }
-    fclose(fd);
-    if(buf)
-    {
-        free(buf);
-    }
-    PDEBUG("MemTotal:\t\t%d KB\n",this->totalMem);
-    PDEBUG("MemFree:\t\t%d KB\n", this->freeMem);
-    PDEBUG("MemShared:\t%d KB\n", this->sharedMem);
-    PDEBUG("Buffers:\t\t%d KB\n", this->buffersMem);
-    PDEBUG("Cached:\t\t%d KB\n", this->cachedMem);
-    PDEBUG("SwapTotal:\t%d KB\n", this->totalSwap);
-    PDEBUG("SwapFree:\t\t%d KB\n", this->totalSwap);
 
-}
 int main(int argc,char *argv[])
 {
    operation oper = get_operation(argc,argv);
-   meminfo info;
+   meminfo memory;
+   cpuinfo cpu;
+   process_list_info process_list;
+   process_list.process = NULL;
+   process_list.size = 0;
+
    switch(oper){
     case GET_HELP_INFO:
         PINFO("help text\n");
@@ -127,11 +85,15 @@ int main(int argc,char *argv[])
         break;
 
     case GET_MEM_INFO:
-        get_memory_info(&info);
+        get_memory_info(&memory);
         break;
+
     case GET_CPU_INFO:
+        get_cpu_info(&cpu);
         break;
+
     case GET_PROCESS_INFO:
+		get_process_list_info(&process_list);
         break;
     default:
         PINFO("Warn,Undefined operation\n");

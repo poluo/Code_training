@@ -12,6 +12,7 @@
 #include <stdlib.h> //for atioi
 #include <getopt.h> // for getopt_long
 #include <string.h>  //strlen
+#include "draw.h"
 #include "main.h"
 #include "linux_info.h"
 
@@ -59,6 +60,8 @@ operation get_operation(int argc,char *argv[])
                 return GET_OTHER_INFO;
         }
     }
+	draw_init();
+	draw_done();
 }
 
 
@@ -98,4 +101,6 @@ int main(int argc,char *argv[])
     default:
         PINFO("Warn,Undefined operation\n");
    }
+   draw_done();
+   draw_init();
 }

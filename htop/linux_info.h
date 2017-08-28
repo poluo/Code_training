@@ -1,6 +1,8 @@
 #ifndef _LINUX_INFO_H
 #define _LINUX_INFO_H
 
+#include <unistd.h>
+
 typedef struct meminfo
 {
    unsigned long long int totalMem;

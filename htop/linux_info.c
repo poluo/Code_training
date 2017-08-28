@@ -74,7 +74,7 @@ void get_cpu_info(cpuinfo *this)
     ssize_t read;
     if(fd == NULL)
     {
-        PINFO("%s open failed\n",PROCSTATFILE);
+        PINFO("%s open failed %s\n",PROCSTATFILE,strerror(errno));
         return;
     }
     char *buf = NULL;
@@ -143,7 +143,7 @@ void read_stat_file_info(process_info *this, const char* filename)
     int fd = open(filename,O_RDONLY);
     if(fd < 0)
 	{
-		PDEBUG("can not open stat file %s\n",filename);
+		PINFO("can not open stat file %s %s\n",filename,strerror(errno));
 		return;
 	}
 	char buf[MAX_READ];
@@ -201,7 +201,7 @@ void get_process_list_info(process_list_info *this)
     dir = opendir("/proc");
     if(!dir) 
 	{
-		PDEBUG("can not open /proc");
+		PINFO("can not open /proc,error %s\n",strerror(errno));
 	}
     while((entry = readdir(dir)) != NULL)
     {
@@ -209,9 +209,8 @@ void get_process_list_info(process_list_info *this)
         if(name[0] < '0' || name[0] > '9')
             continue;
         int pid = atoi(name);
-        char subdirname[MAX_NAME+1];
-        snprintf(subdirname, MAX_NAME, "%s/%s/stat", subdirname, name);
-        
+        char subdirname[MAX_NAME];
+        snprintf(subdirname, MAX_NAME, "/proc/%s/stat",name);
 		if(this->size == 0)
 		{
 			this->process = calloc(1,sizeof(process_info));
@@ -226,7 +225,6 @@ void get_process_list_info(process_list_info *this)
 			this->process[this->size - 1].pid = pid;
 			read_stat_file_info(&this->process[this->size - 1],subdirname);
 		}
-		break;
 
     }
 

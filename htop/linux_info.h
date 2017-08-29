@@ -1,6 +1,6 @@
 #ifndef _LINUX_INFO_H
 #define _LINUX_INFO_H
-
+#include <sys/time.h>
 #include <unistd.h>
 
 typedef struct meminfo
@@ -27,7 +27,9 @@ typedef struct cpuinfo
    unsigned long long int softIrq;
    unsigned long long int steal;
    unsigned long long int guest;
-   unsigned long long int guestnice;
+   unsigned char cores;
+   float utilization;
+   char model[50];
 }cpuinfo;
 
 typedef struct process_info {
@@ -63,8 +65,8 @@ typedef struct process_info {
 
 typedef struct process_list_info
 {
-	process_info *process;
-	int size;
+    process_info *process;
+    int size;
 }process_list_info;
 
 #ifndef MAX_NAME

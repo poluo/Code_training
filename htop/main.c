@@ -16,6 +16,10 @@
 #include "main.h"
 #include "linux_info.h"
 
+meminfo memory;
+cpuinfo cpu;
+process_list_info process_list;
+
 operation get_operation(int argc,char *argv[])
 {
     int opt,opt_index;
@@ -35,7 +39,7 @@ operation get_operation(int argc,char *argv[])
         switch(opt)
         {   
             case 'h':
-                PDEBUG("This is memory info\n");
+                PDEBUG("This is help text\n");
                 return GET_HELP_INFO;
 
             case 'm':
@@ -60,17 +64,13 @@ operation get_operation(int argc,char *argv[])
                 return GET_OTHER_INFO;
         }
     }
-	draw_init();
-	draw_done();
 }
 
 
 int main(int argc,char *argv[])
 {
    operation oper = get_operation(argc,argv);
-   meminfo memory;
-   cpuinfo cpu;
-   process_list_info process_list;
+   
    process_list.process = NULL;
    process_list.size = 0;
 
@@ -96,11 +96,14 @@ int main(int argc,char *argv[])
         break;
 
     case GET_PROCESS_INFO:
-		get_process_list_info(&process_list);
+        get_process_list_info(&process_list);
         break;
     default:
         PINFO("Warn,Undefined operation\n");
    }
-   draw_done();
-   draw_init();
+
+	draw_init();
+   	draw_cpu();
+    draw_done();
+   
 }

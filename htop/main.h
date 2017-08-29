@@ -3,18 +3,18 @@
 
 #define ENABLE_DEBUG
 #define ENABLE_INFO
-#define FUNCTION_NAME 	"htop"
-#define VERSION  		"0.01"
+#define FUNCTION_NAME   "htop"
+#define VERSION         "0.01"
 
 typedef enum operation
 {
-	GET_HELP_INFO,
-	GET_MEM_INFO,
-	GET_CPU_INFO,
-	GET_PROCESS_INFO,
-	GET_VERSION_INFO,
-	GET_OTHER_INFO,
-	GET_MAX_NUM,
+    GET_HELP_INFO,
+    GET_MEM_INFO,
+    GET_CPU_INFO,
+    GET_PROCESS_INFO,
+    GET_VERSION_INFO,
+    GET_OTHER_INFO,
+    GET_MAX_NUM,
 }operation;
 
 #define String_startsWith(s, match) (strncmp((s),(match),strlen(match)) == 0)
@@ -22,13 +22,13 @@ typedef enum operation
 #ifdef ENABLE_DEBUG
 #   define PDEBUG(format, args...) fprintf(stdout, FUNCTION_NAME ": " format, ##args)
 #else
-#  	define PDEBUG(format, args...)
+#   define PDEBUG(format, args...)
 #endif
 
 #ifdef ENABLE_DEBUG
 #   define PINFO(format, args...) fprintf(stdout, FUNCTION_NAME ": " format, ##args)
 #else
-#  	define PINFO(format, args...)
+#   define PINFO(format, args...)
 #endif
 
 #ifndef PROCDIR
@@ -41,6 +41,10 @@ typedef enum operation
 
 #ifndef PROCMEMINFOFILE
 #define PROCMEMINFOFILE PROCDIR "/meminfo"
+#endif
+
+#ifndef PROCCPUINFO
+#define PROCCPUINFO PROCDIR "/cpuinfo"
 #endif
 
 #endif

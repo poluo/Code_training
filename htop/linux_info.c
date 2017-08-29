@@ -70,8 +70,10 @@ void get_memory_info(meminfo *this)
 void get_cpu_info(cpuinfo *this)
 {
     FILE* fd = fopen(PROCSTATFILE,"r");
+	char *tmp = NULL;
     size_t len = 0;
     ssize_t read;
+	unsigned long long int total,use;
     if(fd == NULL)
     {
         PINFO("%s open failed %s\n",PROCSTATFILE,strerror(errno));
@@ -83,9 +85,9 @@ void get_cpu_info(cpuinfo *this)
     {
         if(strncmp(buf,"cpu",strlen("cpu")) == 0)
         {
-            sscanf(buf, "cpu  %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu", 
+            sscanf(buf, "cpu  %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu", 
                 &this->usertime, &this->nicetime, &this->systemtime, &this->idletime, &this->ioWait, &this->irq, 
-                &this->softIrq, &this->steal, &this->guest, &this->guestnice);
+                &this->softIrq, &this->steal, &this->guest);
         }
         else
         {
@@ -94,7 +96,36 @@ void get_cpu_info(cpuinfo *this)
     }
     else
     {
-        PINFO("read cpuinfo failed\n");;
+        PINFO("read cpuinfo failed\n");
+    }
+    fclose(fd);
+ 
+	total  = this->usertime + this->nicetime + this->systemtime + this->idletime + this->ioWait + this->irq + this->softIrq
+			+ this->steal + this->guest;
+	use = this->usertime + this->nicetime + this->systemtime + this->ioWait;
+	this->utilization = use / total;
+
+	
+	fd = fopen(PROCCPUINFO,"r");
+	if(fd == NULL)
+	{
+		PINFO("%s open failed\n",PROCCPUINFO);
+		return;
+	}
+	while((read = getline(&buf,&len,fd)) != -1)
+    {	
+        if(String_startsWith(buf,"model name"))
+        {
+        	tmp = strchr(buf,':');
+            memset(this->model,0,sizeof(this->model));
+            sscanf(tmp, ": %[^\t\n]",this->model);
+        }
+		if(String_startsWith(buf, "cpu cores"))
+		{
+			tmp = strchr(buf,':');
+			this->cores = atoi(tmp+2);
+            printf("cores %d\n",this->cores);
+		}
     }
     fclose(fd);
     if(buf)
@@ -110,7 +141,9 @@ void get_cpu_info(cpuinfo *this)
     PDEBUG("softIrq:%d \n",this->softIrq);
     PDEBUG("steal:%d \n",this->steal);
     PDEBUG("guest:%d \n",this->guest);
-    PDEBUG("guestnice:%d \n",this->guestnice);
+   	PDEBUG("utilization:%f \n",this->utilization);
+	PDEBUG("model name:%s\n",this->model);
+	PDEBUG("cores:%d\n",this->cores);
 }
 
 static ssize_t xread(int fd, void *buf, size_t count) {
@@ -139,32 +172,32 @@ static inline unsigned long long LinuxProcess_adjustTime(unsigned long long t) {
 // read stat file
 void read_stat_file_info(process_info *this, const char* filename)
 {
-	int i = 0;
+    int i = 0;
     int fd = open(filename,O_RDONLY);
     if(fd < 0)
-	{
-		PINFO("can not open stat file %s %s\n",filename,strerror(errno));
-		return;
-	}
-	char buf[MAX_READ];
-	int size = xread(fd,buf,MAX_READ);
-	char *location  = strchr(buf,' ');
-	if(!location) return;
-	location += 2;
-	char *end = strrchr(location,')');
-	if(!end) return;
-	this->command_len= end - location;
-	this->command= calloc(0,sizeof(this->command_len + 1));
-	memcpy(this->command,location,this->command_len);
-	this->command[this->command_len] = '\0';
+    {
+        PINFO("can not open stat file %s %s\n",filename,strerror(errno));
+        return;
+    }
+    char buf[MAX_READ];
+    int size = xread(fd,buf,MAX_READ);
+    char *location  = strchr(buf,' ');
+    if(!location) return;
+    location += 2;
+    char *end = strrchr(location,')');
+    if(!end) return;
+    this->command_len= end - location;
+    this->command= calloc(0,sizeof(this->command_len + 1));
+    memcpy(this->command,location,this->command_len);
+    this->command[this->command_len] = '\0';
 
-	location = end +2;
-	this->state = location[0];
-	location += 2;
-	this->ppid= strtol(location,&location,10);
-	location += 2;
-	this->session = strtoul(location, &location, 10);
-   	location += 8;
+    location = end +2;
+    this->state = location[0];
+    location += 2;
+    this->ppid= strtol(location,&location,10);
+    location += 2;
+    this->session = strtoul(location, &location, 10);
+    location += 8;
     this->utime = LinuxProcess_adjustTime(strtoull(location, &location, 10));
     location += 1;
     this->stime = LinuxProcess_adjustTime(strtoull(location, &location, 10));
@@ -180,8 +213,8 @@ void read_stat_file_info(process_info *this, const char* filename)
     this->nlwp = strtol(location, &location, 10);
     location += 1;
     for (i=0; i<17; i++) 
-		location = strchr(location, ' ')+1;
-	
+        location = strchr(location, ' ')+1;
+    
     this->exit_signal = strtol(location, &location, 10);
     location += 1;
     assert(location != NULL);
@@ -189,9 +222,9 @@ void read_stat_file_info(process_info *this, const char* filename)
     this->processor = strtol(location, &location, 10);
    
     this->time = this->utime + this->stime;
-	PDEBUG("pid %d\n",this->pid);
-	PDEBUG("command %s\n",this->command);
-	PDEBUG("state %c\n",this->state);
+    PDEBUG("pid %d\n",this->pid);
+    PDEBUG("command %s\n",this->command);
+    PDEBUG("state %c\n",this->state);
 
 }
 void get_process_list_info(process_list_info *this)
@@ -200,9 +233,9 @@ void get_process_list_info(process_list_info *this)
     struct dirent *entry;
     dir = opendir("/proc");
     if(!dir) 
-	{
-		PINFO("can not open /proc,error %s\n",strerror(errno));
-	}
+    {
+        PINFO("can not open /proc,error %s\n",strerror(errno));
+    }
     while((entry = readdir(dir)) != NULL)
     {
         char *name = entry->d_name;
@@ -211,20 +244,20 @@ void get_process_list_info(process_list_info *this)
         int pid = atoi(name);
         char subdirname[MAX_NAME];
         snprintf(subdirname, MAX_NAME, "/proc/%s/stat",name);
-		if(this->size == 0)
-		{
-			this->process = calloc(1,sizeof(process_info));
-			this->size = 1;
-			this->process->pid = pid;
-			read_stat_file_info(this->process,subdirname);
-		}
-		else
-		{
-			this->size ++;
-			this->process = realloc(this->process,this->size*sizeof(process_info));
-			this->process[this->size - 1].pid = pid;
-			read_stat_file_info(&this->process[this->size - 1],subdirname);
-		}
+        if(this->size == 0)
+        {
+            this->process = calloc(1,sizeof(process_info));
+            this->size = 1;
+            this->process->pid = pid;
+            read_stat_file_info(this->process,subdirname);
+        }
+        else
+        {
+            this->size ++;
+            this->process = realloc(this->process,this->size*sizeof(process_info));
+            this->process[this->size - 1].pid = pid;
+            read_stat_file_info(&this->process[this->size - 1],subdirname);
+        }
 
     }
 

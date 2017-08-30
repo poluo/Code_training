@@ -6,16 +6,12 @@
 #define FUNCTION_NAME   "htop"
 #define VERSION         "0.01"
 
-typedef enum operation
-{
-    GET_HELP_INFO,
-    GET_MEM_INFO,
-    GET_CPU_INFO,
-    GET_PROCESS_INFO,
-    GET_VERSION_INFO,
-    GET_OTHER_INFO,
-    GET_MAX_NUM,
-}operation;
+#define GET_MEM_INFO		(1 << 0)
+#define GET_CPU_INFO		(1 << 1)
+#define GET_PROCESS_INFO 	(1 << 2)
+#define GET_VERSION_INFO	(1 << 3)
+#define GET_MAX_NUM			(5)
+
 
 #define String_startsWith(s, match) (strncmp((s),(match),strlen(match)) == 0)
 

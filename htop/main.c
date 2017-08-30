@@ -6,104 +6,65 @@
  * Filename      : main.c
  * Description   : rewrite htop, original in https://github.com/hishamhm/htop
  * *******************************************************/
-
-
 #include <stdio.h>  //for printf
 #include <stdlib.h> //for atioi
 #include <getopt.h> // for getopt_long
 #include <string.h>  //strlen
-#include "draw.h"
+#include "socket.h"
 #include "main.h"
-#include "linux_info.h"
 
-meminfo memory;
-cpuinfo cpu;
-process_list_info process_list;
-
-operation get_operation(int argc,char *argv[])
+int parse_arg(int argc,char *argv[])
 {
-    int opt,opt_index;
-    char *cvalue = NULL;
-    static struct option long_opts[]=
+    int ch;
+    char *rvalue = NULL;
+    while((ch = getopt(argc,argv,"hr:")) != -1)
     {
-        {"help",    no_argument,        0,  'h'},
-        {"memory",  no_argument,        0,  'm'},
-        {"cpu",     no_argument,        0,  'c'},
-        {"process", no_argument,        0,  'p'},
-        {"version", no_argument,        0,  'v'},
-        {"test",    required_argument,  0,  't'},
-        {0,         0,                  0,    0} 
-    };
-    while((opt = getopt_long(argc,argv,"mcphvt:",long_opts,&opt_index)) != -1)
-    {
-        switch(opt)
-        {   
+        switch(ch)
+        {
+            case 'r':
+                rvalue = optarg;
+                if((strcmp(rvalue,"s") == 0 )||(strcmp(rvalue,"S") == 0))
+               	{
+               		USER_ID = 1;
+                    return 1;
+               	}
+                if((strcmp(rvalue,"c") == 0 )||(strcmp(rvalue,"C") == 0))
+                {
+                	USER_ID = 2;
+                    return 2;
+                }
+                PINFO("argument must be m\\M or s\\S \n");
+                break;
+
             case 'h':
-                PDEBUG("This is help text\n");
-                return GET_HELP_INFO;
+                PINFO("help text\n");
+                break;
 
-            case 'm':
-                PDEBUG("This is memory info\n");
-                return GET_MEM_INFO;
-
-            case 'c':
-                PDEBUG("This is cpu info\n");
-                return GET_CPU_INFO;
-
-            case 'p':
-                PDEBUG("This is process info\n");
-                return GET_PROCESS_INFO;
-
-            case 'v':
-                PDEBUG("This is version text\n");
-                return GET_VERSION_INFO;
-
-            case 't':
-                cvalue = optarg;
-                PDEBUG("this is test function,3+%s=%d\n",cvalue,3+atoi(cvalue));
-                return GET_OTHER_INFO;
+            default:
+                return -1;
+                break;
         }
-    }
+    }   
 }
 
 
 int main(int argc,char *argv[])
 {
-   operation oper = get_operation(argc,argv);
-   
-   process_list.process = NULL;
-   process_list.size = 0;
+    int role = parse_arg(argc,argv);
 
-   switch(oper){
-    case GET_HELP_INFO:
-        PINFO("help text\n");
-        break;
-
-    case GET_VERSION_INFO:
-        PINFO("This Version:%s\n",VERSION);
-        break;
-
-    case GET_OTHER_INFO:
-        PINFO("This function not defined yet\n");
-        break;
-
-    case GET_MEM_INFO:
-        get_memory_info(&memory);
-        break;
-
-    case GET_CPU_INFO:
-        get_cpu_info(&cpu);
-        break;
-
-    case GET_PROCESS_INFO:
-        get_process_list_info(&process_list);
-        break;
-    default:
-        PINFO("Warn,Undefined operation\n");
-   }
-
-	draw_init();
-   	draw_cpu();
-    draw_done();
-   
+    if(role == 2)
+    {
+        PINFO("This is a socket Client\n");
+        play_client();
+    }
+    else if(role == 1)
+    {
+        PINFO("This is a socket Server\n");
+        play_server();
+    }
+    else
+    {
+        PINFO("Nither Server or Client,exit\n");
+    }
+    return 0;
 }

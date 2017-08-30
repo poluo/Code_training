@@ -258,7 +258,6 @@ void get_process_list_info(process_list_info *this)
             this->process[this->size - 1].pid = pid;
             read_stat_file_info(&this->process[this->size - 1],subdirname);
         }
-
     }
-
+    closedir(dir);
 }

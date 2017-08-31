@@ -14,6 +14,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include "socket.h"
+#include "main.h"
 
 unsigned int operation_mode = 0xFFFFFFFF;
 char *client_ip = "127.0.0.1";
@@ -55,9 +56,9 @@ char *populate_message(message_struct *info_ptr,char *text)
     memcpy(stream, &(info_ptr->id), sizeof(int));
     memcpy(stream + offsetof(message_struct,time_val), &(info_ptr->time_val), sizeof(time_t));
     strcpy(stream + offsetof(message_struct,content), info_ptr->content);
-	memcpy(stream + offsetof(message_struct,mem_info),&memory);
-	memcpy(stream + offsetof(message_struct,cpu_info),&cpu);
-	memcpy(stream + offsetof(message_struct,pro_info),&process_list);
+	memcpy(stream + offsetof(message_struct,mem_info), &memory, sizeof(meminfo));
+	memcpy(stream + offsetof(message_struct,cpu_info), &cpu, sizeof(cpuinfo));
+	memcpy(stream + offsetof(message_struct,pro_info), &process_list, sizeof(process_list_info));
     return stream;
 }
 
@@ -67,9 +68,9 @@ int decode_message(char *stream,int len,message_struct *info_ptr)
     memcpy(&(info_ptr->time_val), stream + offsetof(message_struct, time_val), sizeof(time_t));
     info_ptr->content = malloc(len - sizeof(int) - sizeof(time_t));
     memcpy(info_ptr->content, stream + offsetof(message_struct, content) ,len - sizeof(int) - sizeof(time_t));
-	memcpy(info_ptr->mem_info, stream + offsetof(message_struct, mem_info),sizeof(meminfo));
-	memcpy(info_ptr->cpu_info, stream + offsetof(message_struct, cpu_info),sizeof(cpuinfo));		
-	memcpy(info_ptr->pro_info, stream + offsetof(message_struct, pro_info),sizeof(process_info));
+	memcpy(&info_ptr->mem_info, stream + offsetof(message_struct, mem_info),sizeof(meminfo));
+	memcpy(&info_ptr->cpu_info, stream + offsetof(message_struct, cpu_info),sizeof(cpuinfo));		
+	memcpy(&info_ptr->pro_info, stream + offsetof(message_struct, pro_info),sizeof(process_info));
 }
 
 int  print_received_message(int connection_fd)
@@ -139,6 +140,9 @@ void play_server()
 
         while(! print_received_message(connection_fd))
         {
+        	//draw_init();
+		   	//draw_cpu();
+		    //draw_done();
         	sleep(0.5);
         }
         close(connection_fd);	        
@@ -202,7 +206,8 @@ void play_client()
     if(sockfd < 0)
     {
     	PINFO("get socket fd fialed,%s\n",strerror(errno));
-    }
+		exit(EXIT_FAILURE);
+	}
 	
 	//get cpu,memory,process info
 	scan();
@@ -217,8 +222,6 @@ void play_client()
     {
     	send_message(sockfd,info,buf);
     }
-    //draw_init();
-   	//draw_cpu();
-    //draw_done();
+    
     close(sockfd);
 }

@@ -13,6 +13,7 @@
 #include "socket.h"
 #include "main.h"
 
+extern int USER_ID;
 int parse_arg(int argc,char *argv[])
 {
     int ch;

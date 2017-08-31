@@ -58,13 +58,13 @@ void get_memory_info(meminfo *this)
     {
         free(buf);
     }
-    PDEBUG("MemTotal:\t\t%d KB\n",this->totalMem);
-    PDEBUG("MemFree:\t\t%d KB\n", this->freeMem);
-    PDEBUG("MemShared:\t%d KB\n", this->sharedMem);
-    PDEBUG("Buffers:\t\t%d KB\n", this->buffersMem);
-    PDEBUG("Cached:\t\t%d KB\n", this->cachedMem);
-    PDEBUG("SwapTotal:\t%d KB\n", this->totalSwap);
-    PDEBUG("SwapFree:\t\t%d KB\n", this->totalSwap);
+    PDEBUG("MemTotal:\t\t%lld KB\n",this->totalMem);
+    PDEBUG("MemFree:\t\t%lld KB\n", this->freeMem);
+    PDEBUG("MemShared:\t%lld KB\n", this->sharedMem);
+    PDEBUG("Buffers:\t\t%lld KB\n", this->buffersMem);
+    PDEBUG("Cached:\t\t%lld KB\n", this->cachedMem);
+    PDEBUG("SwapTotal:\t%lld KB\n", this->totalSwap);
+    PDEBUG("SwapFree:\t\t%lld KB\n", this->totalSwap);
 }
 
 void get_cpu_info(cpuinfo *this)
@@ -132,15 +132,15 @@ void get_cpu_info(cpuinfo *this)
     {
         free(buf);
     }
-    PDEBUG("usertime:%d \n",this->usertime);
-    PDEBUG("nicetime:%d \n",this->nicetime);
-    PDEBUG("systemtime:%d \n",this->systemtime);
-    PDEBUG("idletime:%d \n",this->idletime);
-    PDEBUG("ioWait:%d \n",this->ioWait);
-    PDEBUG("irq:%d \n",this->irq);
-    PDEBUG("softIrq:%d \n",this->softIrq);
-    PDEBUG("steal:%d \n",this->steal);
-    PDEBUG("guest:%d \n",this->guest);
+    PDEBUG("usertime:%lld \n",this->usertime);
+    PDEBUG("nicetime:%lld \n",this->nicetime);
+    PDEBUG("systemtime:%lld \n",this->systemtime);
+    PDEBUG("idletime:%lld \n",this->idletime);
+    PDEBUG("ioWait:%lld \n",this->ioWait);
+    PDEBUG("irq:%lld \n",this->irq);
+    PDEBUG("softIrq:%lld \n",this->softIrq);
+    PDEBUG("steal:%lld \n",this->steal);
+    PDEBUG("guest:%lld \n",this->guest);
    	PDEBUG("utilization:%f \n",this->utilization);
 	PDEBUG("model name:%s\n",this->model);
 	PDEBUG("cores:%d\n",this->cores);

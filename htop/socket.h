@@ -18,4 +18,7 @@ typedef struct message
 	process_info pro_info;
 }__attribute__((packed)) message_struct;
 
+void play_client();
+void play_server();
+
 #endif

@@ -80,4 +80,5 @@ typedef struct process_list_info
 extern void get_memory_info(meminfo *this);
 extern void get_cpu_info(cpuinfo *this);
 extern void get_process_list_info(process_list_info *this);
+extern void scan(void);
 #endif

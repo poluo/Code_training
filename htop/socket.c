@@ -15,6 +15,7 @@
 #include <sys/time.h>
 #include "socket.h"
 #include "main.h"
+#include "draw.h"
 
 unsigned int operation_mode = 0xFFFFFFFF;
 char *client_ip = "127.0.0.1";
@@ -25,12 +26,7 @@ meminfo memory;
 cpuinfo cpu;
 process_list_info process_list;
 
-void scan(void)
-{
-	get_memory_info(&memory);
-	get_cpu_info(&cpu);
-	get_process_list_info(&process_list);
-}
+
 
 char *populate_message(message_struct *info_ptr,char *text)
 {
@@ -41,7 +37,7 @@ char *populate_message(message_struct *info_ptr,char *text)
     info_ptr->content = malloc(strlen(text));
     if(info_ptr == NULL)
     {
-    	PINFO("populate message failed,because of malloc content failed,%s\n",strerror(errno));
+    	printc(COLOR_DEFAULT_TEXT,"populate message failed,because of malloc content failed,%s\n",strerror(errno));
     	return NULL;
     }
     strcpy(info_ptr->content,text);
@@ -50,7 +46,7 @@ char *populate_message(message_struct *info_ptr,char *text)
 
     if(stream == NULL)
     {
-    	PINFO("populate message failed,because of calloc stream failed,%s\n",strerror(errno));
+    	printc(COLOR_DEFAULT_TEXT,"populate message failed,because of calloc stream failed,%s\n",strerror(errno));
     	return NULL;
     }
     memcpy(stream, &(info_ptr->id), sizeof(int));
@@ -87,9 +83,9 @@ int  print_received_message(int connection_fd)
 			PINFO("user %d quit connection\n", info->id);
 			return 1;
 		}
-	    PINFO("user:%d time: %s\n",info->id,ctime(&info->time_val));
-	    PINFO("%s\n",info->content);
-		PINFO("cpu model %s,cores %d\n",info->cpu_info.model,info->cpu_info.cores);
+	    printc(COLOR_DEFAULT_TEXT,"user:%d time: %s\n",info->id,ctime(&info->time_val));
+	    printc(COLOR_DEFAULT_TEXT,"%s\n",info->content);
+		printc(COLOR_DEFAULT_TEXT,"cpu model %s,cores %d\n",info->cpu_info.model,info->cpu_info.cores);
 	}
     free(info);
     return 0;
@@ -134,15 +130,12 @@ void play_server()
     {
         if((connection_fd = accept(sockfd,(struct sockaddr *)NULL,NULL)) < 0)
         {
-            PINFO("accept failed\n");
+            printc(COLOR_DEFAULT_TEXT,"accept failed\n");
             continue;
         }
 
         while(! print_received_message(connection_fd))
         {
-        	//draw_init();
-		   	//draw_cpu();
-		    //draw_done();
         	sleep(0.5);
         }
         close(connection_fd);	        
@@ -195,6 +188,8 @@ void play_client()
     message_struct *info = (message_struct *)malloc(sizeof(message_struct));
     char buf[RECV_MAX_LEN];
 
+	memset(buf,0,sizeof(buf));
+
     struct sockaddr_in server_addr;
     
     memset(&server_addr,0,sizeof(server_addr));
@@ -212,16 +207,16 @@ void play_client()
 	//get cpu,memory,process info
 	scan();
 	
-    PINFO("please input message:\n");
-    while(fgets(buf,sizeof(buf),stdin)!= NULL && strcmp(buf,"quit") != 0)
+    printc(COLOR_DEFAULT_TEXT,"please input message:\n");
+    while(getnstr(buf,sizeof(buf)) == OK && strcmp(buf,"quit") != 0)
     {
     	send_message(sockfd,info,buf);
-    	PINFO("please input message:\n");
+    	printc(COLOR_DEFAULT_TEXT,"please input message:\n");
+		memset(buf,0,sizeof(buf));
     }
     if(strcmp(buf,"quit") == 0)
     {
     	send_message(sockfd,info,buf);
     }
-    
     close(sockfd);
 }

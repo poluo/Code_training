@@ -4,6 +4,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <unistd.h>
 #include <sys/utsname.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -16,6 +17,9 @@
 #include "main.h"
 #include "linux_info.h"
 
+extern cpuinfo cpu;
+extern meminfo memory;
+extern process_list_info process_list;
 
 void get_memory_info(meminfo *this)
 {
@@ -124,7 +128,6 @@ void get_cpu_info(cpuinfo *this)
 		{
 			tmp = strchr(buf,':');
 			this->cores = atoi(tmp+2);
-            printf("cores %d\n",this->cores);
 		}
     }
     fclose(fd);
@@ -221,7 +224,7 @@ void read_stat_file_info(process_info *this, const char* filename)
     
     this->processor = strtol(location, &location, 10);
    
-    this->time = this->utime + this->stime;
+    this->time = (this->utime + this->stime);
     PDEBUG("pid %d\n",this->pid);
     PDEBUG("command %s\n",this->command);
     PDEBUG("state %c\n",this->state);
@@ -261,3 +264,10 @@ void get_process_list_info(process_list_info *this)
     }
     closedir(dir);
 }
+void scan(void)
+{
+	get_memory_info(&memory);
+	get_cpu_info(&cpu);
+	get_process_list_info(&process_list);
+}
+

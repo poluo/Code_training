@@ -1,7 +1,7 @@
 #ifndef _MAIN_H
 #define _MAIN_H
 
-#define ENABLE_DEBUG
+//#define ENABLE_DEBUG
 #define ENABLE_INFO
 #define FUNCTION_NAME   "htop"
 #define VERSION         "0.01"

@@ -12,13 +12,15 @@
 #include <string.h>  //strlen
 #include "socket.h"
 #include "main.h"
+#include "draw.h"
+#include "linux_info.h"
 
 extern int USER_ID;
 int parse_arg(int argc,char *argv[])
 {
     int ch;
     char *rvalue = NULL;
-    while((ch = getopt(argc,argv,"hr:")) != -1)
+    while((ch = getopt(argc,argv,"hdr:")) != -1)
     {
         switch(ch)
         {
@@ -27,24 +29,27 @@ int parse_arg(int argc,char *argv[])
                 if((strcmp(rvalue,"s") == 0 )||(strcmp(rvalue,"S") == 0))
                	{
                		USER_ID = 1;
-                    return 1;
                	}
                 if((strcmp(rvalue,"c") == 0 )||(strcmp(rvalue,"C") == 0))
                 {
                 	USER_ID = 2;
-                    return 2;
                 }
+		
                 PINFO("argument must be m\\M or s\\S \n");
                 break;
 
             case 'h':
                 PINFO("help text\n");
                 break;
-
+			
+			case 'd':
+				USER_ID = 3;
+				break;
+			
             default:
-                return -1;
                 break;
         }
+		return USER_ID;
     }   
 }
 
@@ -52,20 +57,28 @@ int parse_arg(int argc,char *argv[])
 int main(int argc,char *argv[])
 {
     int role = parse_arg(argc,argv);
-
+	draw_init();
     if(role == 2)
     {
-        PINFO("This is a socket Client\n");
+        printc(COLOR_DEFAULT_TEXT,"This is a socket Client\n");
         play_client();
     }
     else if(role == 1)
     {
-        PINFO("This is a socket Server\n");
+        printc(COLOR_DEFAULT_TEXT,"This is a socket Server\n");
         play_server();
     }
+	else if(role == 3)
+	{
+		printc(COLOR_DEFAULT_TEXT,"This is debug mode\n");
+		scan();
+		draw_panel();
+	}
     else
     {
-        PINFO("Nither Server or Client,exit\n");
+        printc(COLOR_DEFAULT_TEXT,"Nither Server or Client,exit\n");
     }
+	getch();
+	draw_done();
     return 0;
 }

@@ -20,7 +20,7 @@
 extern cpuinfo cpu;
 extern meminfo memory;
 extern process_list_info process_list;
-
+extern unsigned char scan_flag;
 void get_memory_info(meminfo *this)
 {
     FILE* fd = fopen(PROCMEMINFOFILE,"r");
@@ -62,8 +62,10 @@ void get_memory_info(meminfo *this)
     {
         free(buf);
     }
+	this->usedMem = this->totalMem - this->freeMem;
     PDEBUG("MemTotal:\t\t%lld KB\n",this->totalMem);
     PDEBUG("MemFree:\t\t%lld KB\n", this->freeMem);
+	PDEBUG("MemUsed:\t\t%lld KB\n", this->usedMem);
     PDEBUG("MemShared:\t%lld KB\n", this->sharedMem);
     PDEBUG("Buffers:\t\t%lld KB\n", this->buffersMem);
     PDEBUG("Cached:\t\t%lld KB\n", this->cachedMem);
@@ -77,7 +79,7 @@ void get_cpu_info(cpuinfo *this)
 	char *tmp = NULL;
     size_t len = 0;
     ssize_t read;
-	unsigned long long int total,use;
+	unsigned long long int use;
     if(fd == NULL)
     {
         PINFO("%s open failed %s\n",PROCSTATFILE,strerror(errno));
@@ -87,11 +89,19 @@ void get_cpu_info(cpuinfo *this)
 
     if((read = getline(&buf,&len,fd)) != -1)
     {
-        if(strncmp(buf,"cpu",strlen("cpu")) == 0)
+        if(strncmp(buf,"cpu",3) == 0)
         {
-            sscanf(buf, "cpu  %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu", 
-                &this->usertime, &this->nicetime, &this->systemtime, &this->idletime, &this->ioWait, &this->irq, 
-                &this->softIrq, &this->steal, &this->guest);
+            sscanf(buf, "cpu  %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu, %16llu", 
+                &this->usertime,
+                &this->nicetime,
+                &this->systemtime,
+                &this->idletime,
+                &this->ioWait, 
+                &this->irq, 
+                &this->softIrq, 
+                &this->steal, 
+                &this->guest,
+                &this->guest_nice);
         }
         else
         {
@@ -104,12 +114,13 @@ void get_cpu_info(cpuinfo *this)
     }
     fclose(fd);
  
-	total  = this->usertime + this->nicetime + this->systemtime + this->idletime + this->ioWait + this->irq + this->softIrq
-			+ this->steal + this->guest;
+	this->total  = this->usertime + this->nicetime + 
+		this->systemtime + this->idletime + 
+		this->ioWait + this->irq + 
+		this->softIrq + this->steal;
 	use = this->usertime + this->nicetime + this->systemtime + this->ioWait;
-	this->utilization = use / total;
+	this->utilization = (((double)use) / this->total) * 100;
 
-	
 	fd = fopen(PROCCPUINFO,"r");
 	if(fd == NULL)
 	{
@@ -140,13 +151,11 @@ void get_cpu_info(cpuinfo *this)
     PDEBUG("systemtime:%lld \n",this->systemtime);
     PDEBUG("idletime:%lld \n",this->idletime);
     PDEBUG("ioWait:%lld \n",this->ioWait);
-    PDEBUG("irq:%lld \n",this->irq);
-    PDEBUG("softIrq:%lld \n",this->softIrq);
-    PDEBUG("steal:%lld \n",this->steal);
-    PDEBUG("guest:%lld \n",this->guest);
-   	PDEBUG("utilization:%f \n",this->utilization);
 	PDEBUG("model name:%s\n",this->model);
 	PDEBUG("cores:%d\n",this->cores);
+	PDEBUG("use:%lld\n",use);
+	PDEBUG("total:%lld\n",this->total);
+	PDEBUG("utilization:%.5lf\n",this->utilization);
 }
 
 static ssize_t xread(int fd, void *buf, size_t count) {
@@ -225,6 +234,7 @@ void read_stat_file_info(process_info *this, const char* filename)
     this->processor = strtol(location, &location, 10);
    
     this->time = (this->utime + this->stime);
+	this->percent_cpu = (((double)this ->time) / cpu.total);
     PDEBUG("pid %d\n",this->pid);
     PDEBUG("command %s\n",this->command);
     PDEBUG("state %c\n",this->state);
@@ -266,8 +276,20 @@ void get_process_list_info(process_list_info *this)
 }
 void scan(void)
 {
-	get_memory_info(&memory);
-	get_cpu_info(&cpu);
-	get_process_list_info(&process_list);
+	if(scan_flag & GET_MEM_INFO)
+	{
+		get_memory_info(&memory);
+		draw_memory();
+	}
+	if(scan_flag & GET_CPU_INFO)
+	{
+		get_cpu_info(&cpu);
+		draw_cpu();
+	}
+	if(scan_flag & GET_PROCESS_INFO)
+	{
+		get_process_list_info(&process_list);
+		draw_process();
+	}
 }
 

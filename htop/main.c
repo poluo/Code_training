@@ -16,11 +16,12 @@
 #include "linux_info.h"
 
 extern int USER_ID;
+unsigned char scan_flag = 0x00;
 int parse_arg(int argc,char *argv[])
 {
     int ch;
     char *rvalue = NULL;
-    while((ch = getopt(argc,argv,"hdr:")) != -1)
+    while((ch = getopt(argc,argv,"hcmpadr:")) != -1)
     {
         switch(ch)
         {
@@ -28,11 +29,11 @@ int parse_arg(int argc,char *argv[])
                 rvalue = optarg;
                 if((strcmp(rvalue,"s") == 0 )||(strcmp(rvalue,"S") == 0))
                	{
-               		USER_ID = 1;
+               		return CLIENT;
                	}
                 if((strcmp(rvalue,"c") == 0 )||(strcmp(rvalue,"C") == 0))
                 {
-                	USER_ID = 2;
+                	return SERVER;
                 }
 		
                 PINFO("argument must be m\\M or s\\S \n");
@@ -42,14 +43,26 @@ int parse_arg(int argc,char *argv[])
                 PINFO("help text\n");
                 break;
 			
-			case 'd':
-				USER_ID = 3;
+			case 'c':
+				scan_flag |= (GET_CPU_INFO);
 				break;
-			
+
+			case 'm':
+				scan_flag |= (GET_MEM_INFO);
+				break;
+
+			case 'p':
+				scan_flag |= (GET_PROCESS_INFO);
+				break;
+				
+			case 'a':
             default:
+				scan_flag |= (GET_CPU_INFO);
+				scan_flag |= (GET_MEM_INFO);
+				scan_flag |= (GET_PROCESS_INFO);
                 break;
         }
-		return USER_ID;
+		return OTHERS;
     }   
 }
 
@@ -57,28 +70,26 @@ int parse_arg(int argc,char *argv[])
 int main(int argc,char *argv[])
 {
     int role = parse_arg(argc,argv);
-	draw_init();
-    if(role == 2)
+
+    if(role == CLIENT)
     {
-        printc(COLOR_DEFAULT_TEXT,"This is a socket Client\n");
+        printf("This is a socket Client\n");
         play_client();
     }
-    else if(role == 1)
+    else if(role == SERVER)
     {
-        printc(COLOR_DEFAULT_TEXT,"This is a socket Server\n");
+        printf("This is a socket Server\n");
         play_server();
     }
-	else if(role == 3)
+	else if(role == OTHERS)
 	{
-		printc(COLOR_DEFAULT_TEXT,"This is debug mode\n");
 		scan();
-		draw_panel();
 	}
     else
     {
-        printc(COLOR_DEFAULT_TEXT,"Nither Server or Client,exit\n");
+        printf("No support parmgrams\n");
     }
 	getch();
-	draw_done();
+
     return 0;
 }

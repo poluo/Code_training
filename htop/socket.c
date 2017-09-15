@@ -37,7 +37,7 @@ char *populate_message(message_struct *info_ptr,char *text)
     info_ptr->content = malloc(strlen(text));
     if(info_ptr == NULL)
     {
-    	printc(COLOR_DEFAULT_TEXT,"populate message failed,because of malloc content failed,%s\n",strerror(errno));
+    	printf("populate message failed,because of malloc content failed,%s\n",strerror(errno));
     	return NULL;
     }
     strcpy(info_ptr->content,text);
@@ -46,7 +46,7 @@ char *populate_message(message_struct *info_ptr,char *text)
 
     if(stream == NULL)
     {
-    	printc(COLOR_DEFAULT_TEXT,"populate message failed,because of calloc stream failed,%s\n",strerror(errno));
+    	printf("populate message failed,because of calloc stream failed,%s\n",strerror(errno));
     	return NULL;
     }
     memcpy(stream, &(info_ptr->id), sizeof(int));
@@ -83,9 +83,9 @@ int  print_received_message(int connection_fd)
 			PINFO("user %d quit connection\n", info->id);
 			return 1;
 		}
-	    printc(COLOR_DEFAULT_TEXT,"user:%d time: %s\n",info->id,ctime(&info->time_val));
-	    printc(COLOR_DEFAULT_TEXT,"%s\n",info->content);
-		printc(COLOR_DEFAULT_TEXT,"cpu model %s,cores %d\n",info->cpu_info.model,info->cpu_info.cores);
+	    printf("user:%d time: %s\n",info->id,ctime(&info->time_val));
+	    printf("%s\n",info->content);
+		printf("cpu model %s,cores %d\n",info->cpu_info.model,info->cpu_info.cores);
 	}
     free(info);
     return 0;
@@ -130,7 +130,7 @@ void play_server()
     {
         if((connection_fd = accept(sockfd,(struct sockaddr *)NULL,NULL)) < 0)
         {
-            printc(COLOR_DEFAULT_TEXT,"accept failed\n");
+            printf("accept failed\n");
             continue;
         }
 
@@ -207,11 +207,11 @@ void play_client()
 	//get cpu,memory,process info
 	scan();
 	
-    printc(COLOR_DEFAULT_TEXT,"please input message:\n");
+    printf("please input message:\n");
     while(getnstr(buf,sizeof(buf)) == OK && strcmp(buf,"quit") != 0)
     {
     	send_message(sockfd,info,buf);
-    	printc(COLOR_DEFAULT_TEXT,"please input message:\n");
+    	printf("please input message:\n");
 		memset(buf,0,sizeof(buf));
     }
     if(strcmp(buf,"quit") == 0)

@@ -27,8 +27,10 @@ typedef struct cpuinfo
    unsigned long long int softIrq;
    unsigned long long int steal;
    unsigned long long int guest;
+   unsigned long long int guest_nice;
+   unsigned long long int total;
    unsigned char cores;
-   float utilization;
+   double utilization;
    char model[50];
 }cpuinfo;
 
@@ -46,8 +48,8 @@ typedef struct process_info {
    unsigned long long int cutime;
    unsigned long long int cstime;
 
-   float percent_cpu;
-   float percent_mem;
+   double percent_cpu;
+   double percent_mem;
    char* user;
 
    long int priority;
@@ -76,6 +78,8 @@ typedef struct process_list_info
 #ifndef MAX_READ
 #define MAX_READ 2048
 #endif
+
+#define STAT			"/proc/stat"
 
 extern void get_memory_info(meminfo *this);
 extern void get_cpu_info(cpuinfo *this);

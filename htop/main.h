@@ -16,6 +16,7 @@
 #define SERVER	(2)
 #define OTHERS	(3)
 
+#define SEC_PER_DAY  (3600 * 24)
 #define String_startsWith(s, match) (strncmp((s),(match),strlen(match)) == 0)
 
 #ifdef ENABLE_DEBUG
@@ -30,20 +31,15 @@
 #   define PINFO(format, args...)
 #endif
 
-#ifndef PROCDIR
 #define PROCDIR "/proc"
-#endif
 
-#ifndef PROCSTATFILE
 #define PROCSTATFILE PROCDIR "/stat"
-#endif
 
-#ifndef PROCMEMINFOFILE
 #define PROCMEMINFOFILE PROCDIR "/meminfo"
-#endif
 
-#ifndef PROCCPUINFO
 #define PROCCPUINFO PROCDIR "/cpuinfo"
-#endif
+
+#define PROCLOADAVG PROCDIR "/loadavg"
+
 
 #endif

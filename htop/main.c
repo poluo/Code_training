@@ -10,6 +10,9 @@
 #include <stdlib.h> //for atioi
 #include <getopt.h> // for getopt_long
 #include <string.h>  //strlen
+#include <sys/utsname.h> //utsname
+#include <unistd.h>
+#include <time.h>
 #include "socket.h"
 #include "main.h"
 #include "draw.h"
@@ -17,6 +20,9 @@
 
 extern int USER_ID;
 unsigned char scan_flag = 0x00;
+/* Number of ticks per second */
+unsigned int hz;
+unsigned long long uptime;
 int parse_arg(int argc,char *argv[])
 {
     int ch;
@@ -66,11 +72,56 @@ int parse_arg(int argc,char *argv[])
     }   
 }
 
+void get_HZ(void)
+{
+	long ticks;
 
+	if ((ticks = sysconf(_SC_CLK_TCK)) == -1) {
+		perror("sysconf");
+	}
+
+	hz = (unsigned int) ticks;
+}
+
+time_t get_local_time(struct tm *rectime,int day_off)
+{
+	time_t timer;
+	struct tm *ltm;
+
+	time(&timer);
+	timer -= SEC_PER_DAY * day_off;
+	ltm = localtime(&timer);
+	if(ltm)
+	{
+		*rectime = *ltm;
+	}
+	return timer;
+}
+void print_header()
+{
+	struct utsname header;
+	struct tm now_time;
+	char cur_date[64];
+
+	uname(&header);
+	get_local_time(&now_time,0);
+	strftime(cur_date,sizeof(cur_date),"%Y-%m-%d",&now_time);
+	printf("%s %s (%s) \t%s \t_%s_\t\n", header.sysname, header.release, header.nodename,
+		       cur_date, header.machine);
+}
 int main(int argc,char *argv[])
 {
     int role = parse_arg(argc,argv);
 
+	if(role > OTHERS)
+	{
+		printf("No support parameter\n");
+		return 0;
+	}
+
+	print_header();
+	get_HZ();
+	read_uptime(&uptime);
     if(role == CLIENT)
     {
         printf("This is a socket Client\n");
@@ -83,13 +134,12 @@ int main(int argc,char *argv[])
     }
 	else if(role == OTHERS)
 	{
-		scan();
+		while(1)
+		{
+			scan();
+			sleep(5);
+		}
 	}
-    else
-    {
-        printf("No support parmgrams\n");
-    }
-	getch();
 
     return 0;
 }

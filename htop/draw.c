@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <pwd.h>
 #include "linux_info.h"
 #include "draw.h"
 
@@ -11,10 +12,9 @@ int row,col;
 
 void draw_cpu(void)
 {
-	 int use = cpu.utilization;
 	 printf("CPU: Model %s, Cores %d, utilization ",cpu.model,cpu.cores);
-	 printf("%.2lf",cpu.utilization);
-	 printf("%\n");
+	 printf("%lf %lf %ld",cpu.lavg1,cpu.lavg5,cpu.lavg15);
+	 printf("%%\n");
 	 
 }
 void draw_memory(void)
@@ -29,7 +29,7 @@ void draw_memory(void)
     printf("Buffers %lld KB \n", memory.buffersMem);
 
 }
-void printTime(unsigned long long int totalHundredths) {
+void print_process_time(unsigned long long int totalHundredths) {
    unsigned long long totalSeconds = totalHundredths / 100;
 
    unsigned long long hours = totalSeconds / 3600;
@@ -39,32 +39,49 @@ void printTime(unsigned long long int totalHundredths) {
 
 	if(hours)
 	{
-	   	printf("%d:%d\t",hours,minutes);
+	   	printf("%lld:%d\t",hours,minutes);
 	}
    	else
    	{
-   		printf("%d:%d.%d\t",hours,minutes,hundredths);
+   		printf("%lld:%d.%d\t",hours,minutes,hundredths);
    	}
 }
 
 void draw_process(void)
 {
-	int i;
-	process_info tmp;
-	printf("PID\tUSER\t\tPRI\tS\tCPU%\tMEM%\tTIME+\tCommand\n");
-	for(i = 0; i < process_list.size && i <10; i++)
+	process_info *tmp;
+	struct passwd *pw;
+	
+	
+	printf("PID\tUSER\t\tPRI\tS\tCPU%%\tMEM%%\tTIME+\tCommand\n");
+	tmp = process_list.process;
+	while (tmp)
 	{
-		tmp = process_list.process[i];
-		printf("%d\t%s\t\t%ld\t%c\t%.2lf\t%.5f\t",tmp.pid,tmp.user,tmp.priority,tmp.state,tmp.percent_cpu,0.0);
-		printTime(tmp.time);
-		printf("%s\n",tmp.command);
+		pw = getpwuid(tmp->uid);
+		if(pw)
+		{
+			printf("%d\t%s\t\t%d\t%c\t%.2lf\t%.5f\t", 
+				tmp->stat_info.pid, 
+				pw->pw_name,
+				tmp->stat_info.priority,
+				tmp->stat_info.state,
+				tmp->cpu_usage,
+				tmp->mem_usage);
+		}
+		else
+		{
+			printf("%d\t%s\t\t%d\t%c\t%.2lf\t%.5f\t", 
+				tmp->stat_info.pid, 
+				"NO ONE",
+				tmp->stat_info.priority,
+				tmp->stat_info.state,
+				tmp->cpu_usage,
+				tmp->mem_usage);
+		}
+		print_process_time(tmp->stat_info.starttime);
+		printf("%s\n",tmp->stat_info.command);
+		tmp = tmp->next;
 	}
 	
-}
-void draw_panel()
-{
-	draw_cpu();
-	draw_memory();
-	draw_process();
 }
 

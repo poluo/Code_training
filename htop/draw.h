@@ -19,8 +19,9 @@ do {								\
    	refresh();						\
 }while(0)
 
-extern void draw_init();
-extern void draw_panel();
-extern void draw_done();
+extern void draw_memory(void);
+extern void draw_cpu(void);
+extern void draw_process(void);
+
 
 #endif

@@ -3,6 +3,13 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+
+typedef unsigned char BOOL;
+#ifndef PAGE_SIZE
+#define PAGE_SIZE ( sysconf(_SC_PAGESIZE) )
+#endif
+#define ONE_K 1024L
+#define PAGE_SIZE_KB ( PAGE_SIZE / ONE_K )
 typedef struct meminfo
 {
    unsigned long long int totalMem;
@@ -29,40 +36,93 @@ typedef struct cpuinfo
    unsigned long long int guest;
    unsigned long long int guest_nice;
    unsigned long long int total;
+   unsigned long long int last_total;
+   unsigned long long int period;
    unsigned char cores;
+   unsigned long nr_runing;
+   unsigned long nr_threads;
+   unsigned long last_pid;
+   double lavg1;
+   double lavg5;
+   double lavg15;
    double utilization;
    char model[50];
 }cpuinfo;
 
+
+typedef struct pid_stats {
+  int           pid;                      /** The process id. **/
+  unsigned int  comm_len;				  /**thr command length**/
+  char          *command; 				  /** The filename of the executable **/
+  char          state; /** 1 **/          /** R is running, S is sleeping, 
+			   D is sleeping in an uninterruptible wait,
+			   Z is zombie, T is traced or stopped **/
+  int           ppid;                     /** The pid of the parent. **/
+  int           pgrp;                     /** The pgrp of the process. **/
+  int           session;                  /** The session id of the process. **/
+  int           tty;                      /** The tty the process uses **/
+  int           tpgid;                    /** (too long) **/
+  unsigned int	flags;                    /** The flags of the process. **/
+  unsigned int	minflt;                   /** The number of minor faults **/
+  unsigned int	cminflt;                  /** The number of minor faults with childs **/
+  unsigned int	majflt;                   /** The number of major faults **/
+  unsigned int  cmajflt;                  /** The number of major faults with childs **/
+  int           utime;                    /** user mode jiffies **/
+  int           stime;                    /** kernel mode jiffies **/
+  int			cutime;                   /** user mode jiffies with childs **/
+  int           cstime;                   /** kernel mode jiffies with childs **/
+  int           priority;                 /** the standard nice value, plus fifteen **/
+  int 			nice;					  /** The nice value **/
+  int  			num_threads;              /** Number of threads in this process (since Linux 2.6)**/
+  unsigned int  itrealvalue;              /** The time before the next SIGALRM is sent to the process **/
+  int           starttime; /** 20 **/     /** Time the process started after system boot **/
+  unsigned int  vsize;                    /** Virtual memory size **/
+  unsigned int  rss;                      /** Resident Set Size **/
+  unsigned int  rlim;                     /** Current limit in bytes on the rss **/
+  unsigned int  startcode;                /** The address above which program text can run **/
+  unsigned int	endcode;                  /** The address below which program text can run **/
+  unsigned int  startstack;               /** The address of the start of the stack **/
+  unsigned int  kstkesp;                  /** The current value of ESP **/
+  unsigned int  kstkeip;                 /** The current value of EIP **/
+  int			signal;                   /** The bitmap of pending signals **/
+  int           blocked; /** 30 **/       /** The bitmap of blocked signals **/
+  int           sigignore;                /** The bitmap of ignored signals **/
+  int           sigcatch;                 /** The bitmap of catched signals **/
+  unsigned int  wchan;  /** 33 **/        /** (too long) **/
+		
+} pid_stats;
+typedef struct pid_io
+{
+	unsigned long long io_rchar;
+   	unsigned long long io_wchar;
+   	unsigned long long io_syscr;
+   	unsigned long long io_syscw;
+	unsigned long long io_read_bytes;
+	unsigned long long io_write_bytes;
+	unsigned long long io_cancelled_write_bytes;
+}pid_io;
+typedef struct statm_info
+{
+	long m_share;
+	long m_trs;
+	long m_drs;
+	long m_lrs;
+	long m_dt;
+	long m_size;
+    long m_resident;
+}pid_statm;
+
 typedef struct process_info {
    unsigned long long int time;
-   pid_t pid;
-   pid_t ppid;
-   char* command;
-   int command_len;
-   char state;
-   unsigned int session;
-   int processor;
-   unsigned long long int utime;
-   unsigned long long int stime;
-   unsigned long long int cutime;
-   unsigned long long int cstime;
-
-   double percent_cpu;
-   double percent_mem;
-   char* user;
-
-   long int priority;
-   long int nice;
-   long int nlwp;
-   char starttime_show[8];
-   time_t starttime_ctime;
-
-   int exit_signal;
-
-   unsigned long int minflt;
+   unsigned long long int last_time;
+   pid_stats stat_info;
+   pid_statm statm_info;
+   pid_io io_info;
+   double cpu_usage;
+   double mem_usage;
+   unsigned long uid;
    struct process_info *next;
-   struct process_info *prev;
+ 
 } process_info;
 
 typedef struct process_list_info
@@ -76,13 +136,18 @@ typedef struct process_list_info
 #endif
 
 #ifndef MAX_READ
-#define MAX_READ 2048
+#define MAX_READ 1024
 #endif
 
 #define STAT			"/proc/stat"
-
+#define UPTIME			"/proc/uptime"
+#define PID_STAT	"/proc/%u/stat"
+#define PID_STATUS	"/proc/%u/status"
+#define PID_IO	"/proc/%u/io"
+#define PID_STATM	"/proc/%u/statm"
 extern void get_memory_info(meminfo *this);
-extern void get_cpu_info(cpuinfo *this);
-extern void get_process_list_info(process_list_info *this);
+extern int get_cpu_info(cpuinfo *this);
+extern int get_process_list_info(process_list_info *this);
 extern void scan(void);
+extern void read_uptime(unsigned long long *uptime);
 #endif

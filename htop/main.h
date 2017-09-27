@@ -16,9 +16,9 @@
 #define SERVER	(2)
 #define OTHERS	(3)
 
-#define SEC_PER_DAY  (3600 * 24)
-#define String_startsWith(s, match) (strncmp((s),(match),strlen(match)) == 0)
 
+#define String_startsWith(s, match) (strncmp((s),(match),strlen(match)) == 0)
+#define timeval_to_us(x) (x.tv_sec*1000000 + x.tv_usec)
 #ifdef ENABLE_DEBUG
 #   define PDEBUG(format, args...) fprintf(stdout, FUNCTION_NAME ": " format, ##args)
 #else

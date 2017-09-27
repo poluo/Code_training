@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include "main.h"
+#include "draw.h"
 #include "linux_info.h"
 
 extern cpuinfo cpu;
@@ -55,6 +56,8 @@ void get_memory_info(meminfo *this)
              switch (buf[1]) {
              case 'w':
                 if (tryRead("SwapTotal:", &this->totalSwap)) {}
+				else if (tryRead("SwapCached:", &this->cachedSwap)) {}
+				else if (tryRead("SwapFree:", &this->freeSwap)) {}
          }
          break;
       }
@@ -65,7 +68,9 @@ void get_memory_info(meminfo *this)
     {
         free(buf);
     }
+	this->usedSwap = this->totalSwap - this->freeSwap;
 	this->usedMem = this->totalMem - this->freeMem;
+#if 0
     PDEBUG("MemTotal:\t\t%lld KB\n",this->totalMem);
     PDEBUG("MemFree:\t\t%lld KB\n", this->freeMem);
 	PDEBUG("MemUsed:\t\t%lld KB\n", this->usedMem);
@@ -74,6 +79,7 @@ void get_memory_info(meminfo *this)
     PDEBUG("Cached:\t\t%lld KB\n", this->cachedMem);
     PDEBUG("SwapTotal:\t%lld KB\n", this->totalSwap);
     PDEBUG("SwapFree:\t\t%lld KB\n", this->totalSwap);
+#endif
 }
 
 int read_cpu_stat_info(cpuinfo *this)
@@ -222,12 +228,6 @@ static ssize_t xread(int fd, void *buf, size_t count)
   }
 }
 
-static double jiffy = 0.0;
-static inline unsigned long long LinuxProcess_adjustTime(unsigned long long t) {
-   if(jiffy == 0.0) jiffy = sysconf(_SC_CLK_TCK);
-   double jiffytime = 1.0 / jiffy;
-   return (unsigned long long) t * jiffytime * 100;
-}
 
 /*
  ***************************************************************************
@@ -384,13 +384,11 @@ int read_pid_stat_info(process_info *this,unsigned int pid)
 
 	if((end  = strchr(buf,')')) == NULL)
 		return -1;
-	
 	this->stat_info.pid = pid;
-
     this->stat_info.comm_len= end - start;
-    this->stat_info.command = calloc(0,sizeof(this->stat_info.comm_len + 1));
-    memcpy(this->stat_info.command, start, this->stat_info.comm_len);
-    this->stat_info.command[this->stat_info.comm_len] = '\0';
+	size = this->stat_info.comm_len < COMMADN_MAX_LEN ? this->stat_info.comm_len : COMMADN_MAX_LEN;
+    memcpy(this->stat_info.command, start, size);
+    this->stat_info.command[size] = '\0';
 	this->last_time = (this->stat_info.utime + this->stat_info.stime);
   	sscanf(end + 2, "%c %d %d %d %d %d %u %u %u %u %u %d %d %d %d %d %d %u %u %d %u %u %u %u %u %u %u %u %d %d %d %d %u",
 	  		  /*       1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33*/
@@ -428,7 +426,6 @@ int read_pid_stat_info(process_info *this,unsigned int pid)
 	  &(this->stat_info.sigcatch),
 	  &(this->stat_info.wchan));
 
-	//include the time from children processes
 	
     this->time = (this->stat_info.utime + this->stat_info.stime);
 	this->cpu_usage = (((double)(this->time - this->last_time)) / cpu.period) * 100.0;
@@ -494,10 +491,14 @@ int get_process_list_info(process_list_info *this)
 		return -1;
     }
 
+	this->running_num = 0;
+	this->sleeping_num = 0;
+	this->stoped_num = 0;
+	this->zombie_num = 0;
     while((entry = readdir(dir)) != NULL)
     {
         char *name = entry->d_name;
-		
+	
 		if(name[0] < '0' || name[0] > '9')
             continue;
         int pid = atoi(name);
@@ -516,32 +517,33 @@ int get_process_list_info(process_list_info *this)
 		if(read_pid_io_info(&(proc->io_info),pid) < 0)
 			PINFO("read pid %d io file error\n",pid);
 		proc->mem_usage = ((double)(proc->statm_info.m_resident * PAGE_SIZE_KB) /  memory.totalMem) * 100.0;
+		if(proc->stat_info.state == 'R')
+			this->running_num ++;
+		else if(proc->stat_info.state == 'S')
+			this->sleeping_num++;
+		else if(proc->stat_info.state == 'T')
+			this->stoped_num++;
+		else if(proc->stat_info.state == 'Z')
+			this->zombie_num++;
 		proc = NULL;
 		count++;
 		if(count > 10)
 			break;
-
     }
     closedir(dir);
 	return 0;
 }
-void scan(void)
+void scan(int enable_draw)
 {
 	
 	read_uptime(&uptime);
 	get_cpu_info(&cpu);
 	get_memory_info(&memory);
-	if(scan_flag & GET_MEM_INFO)
+	get_process_list_info(&process_list);
+	if(enable_draw)
 	{
 		draw_memory();
-	}
-	if(scan_flag & GET_CPU_INFO)
-	{
 		draw_cpu();
-	}
-	if(scan_flag & GET_PROCESS_INFO)
-	{
-		get_process_list_info(&process_list);
 		draw_process();
 	}
 }

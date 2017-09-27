@@ -4,12 +4,12 @@
 #include <unistd.h>
 
 
-typedef unsigned char BOOL;
 #ifndef PAGE_SIZE
 #define PAGE_SIZE ( sysconf(_SC_PAGESIZE) )
 #endif
 #define ONE_K 1024L
 #define PAGE_SIZE_KB ( PAGE_SIZE / ONE_K )
+#define COMMADN_MAX_LEN	(20)
 typedef struct meminfo
 {
    unsigned long long int totalMem;
@@ -19,6 +19,7 @@ typedef struct meminfo
    unsigned long long int buffersMem;
    unsigned long long int cachedMem;
    unsigned long long int totalSwap;
+   unsigned long long int cachedSwap;
    unsigned long long int usedSwap;
    unsigned long long int freeSwap;
 }meminfo;
@@ -38,7 +39,7 @@ typedef struct cpuinfo
    unsigned long long int total;
    unsigned long long int last_total;
    unsigned long long int period;
-   unsigned char cores;
+   unsigned int cores;
    unsigned long nr_runing;
    unsigned long nr_threads;
    unsigned long last_pid;
@@ -53,7 +54,7 @@ typedef struct cpuinfo
 typedef struct pid_stats {
   int           pid;                      /** The process id. **/
   unsigned int  comm_len;				  /**thr command length**/
-  char          *command; 				  /** The filename of the executable **/
+  char          command[COMMADN_MAX_LEN + 1]; 				  /** The filename of the executable **/
   char          state; /** 1 **/          /** R is running, S is sleeping, 
 			   D is sleeping in an uninterruptible wait,
 			   Z is zombie, T is traced or stopped **/
@@ -122,13 +123,16 @@ typedef struct process_info {
    double mem_usage;
    unsigned long uid;
    struct process_info *next;
- 
 } process_info;
 
 typedef struct process_list_info
 {
     process_info *process;
-    int size;
+    unsigned int size;
+	unsigned int running_num;
+	unsigned int sleeping_num;
+	unsigned int stoped_num;
+	unsigned int zombie_num;
 }process_list_info;
 
 #ifndef MAX_NAME
@@ -148,6 +152,6 @@ typedef struct process_list_info
 extern void get_memory_info(meminfo *this);
 extern int get_cpu_info(cpuinfo *this);
 extern int get_process_list_info(process_list_info *this);
-extern void scan(void);
+extern void scan(int enable_draw);
 extern void read_uptime(unsigned long long *uptime);
 #endif

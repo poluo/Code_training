@@ -8,21 +8,31 @@
  * *******************************************************/
 #include <stdio.h>  //for printf
 #include <stdlib.h> //for atioi
+#include <stdint.h>
 #include <getopt.h> // for getopt_long
 #include <string.h>  //strlen
 #include <sys/utsname.h> //utsname
+#include <sys/time.h> //gettimeofday
 #include <unistd.h>
 #include <time.h>
+#include <errno.h>
 #include "socket.h"
 #include "main.h"
 #include "draw.h"
 #include "linux_info.h"
+#include "log.h"
+#include "timer.h"
+#include "tools.h"
+
 
 extern int USER_ID;
-unsigned char scan_flag = 0x00;
-/* Number of ticks per second */
-unsigned int hz;
+extern const char *program_name;
+
+unsigned int hz;	/* Number of ticks per second */
 unsigned long long uptime;
+uint8_t scan_flag =  0;
+uint8_t enable_scan = 0;
+
 int parse_arg(int argc,char *argv[])
 {
     int ch;
@@ -35,11 +45,11 @@ int parse_arg(int argc,char *argv[])
                 rvalue = optarg;
                 if((strcmp(rvalue,"s") == 0 )||(strcmp(rvalue,"S") == 0))
                	{
-               		return CLIENT;
+               		return SERVER;
                	}
                 if((strcmp(rvalue,"c") == 0 )||(strcmp(rvalue,"C") == 0))
                 {
-                	return SERVER;
+                	return CLIENT;
                 }
 		
                 PINFO("argument must be m\\M or s\\S \n");
@@ -72,57 +82,46 @@ int parse_arg(int argc,char *argv[])
     }   
 }
 
-void get_HZ(void)
-{
-	long ticks;
-
-	if ((ticks = sysconf(_SC_CLK_TCK)) == -1) {
-		perror("sysconf");
-	}
-
-	hz = (unsigned int) ticks;
-}
-
-time_t get_local_time(struct tm *rectime,int day_off)
-{
-	time_t timer;
-	struct tm *ltm;
-
-	time(&timer);
-	timer -= SEC_PER_DAY * day_off;
-	ltm = localtime(&timer);
-	if(ltm)
-	{
-		*rectime = *ltm;
-	}
-	return timer;
-}
 void print_header()
 {
 	struct utsname header;
 	struct tm now_time;
-	char cur_date[64];
+	char date[LOG_DATE_LENGTH];
 
 	uname(&header);
-	get_local_time(&now_time,0);
-	strftime(cur_date,sizeof(cur_date),"%Y-%m-%d",&now_time);
+	log_date(date, LOG_DATE_LENGTH);
 	printf("%s %s (%s) \t%s \t_%s_\t\n", header.sysname, header.release, header.nodename,
-		       cur_date, header.machine);
+		       date, header.machine);
 }
+
 int main(int argc,char *argv[])
 {
     int role = parse_arg(argc,argv);
-
+	int s;
+	timer_t timerid;
+	struct timeval begin, end;
+	struct timespec request, remain;
+	
 	if(role > OTHERS)
 	{
-		printf("No support parameter\n");
+		printf("Unsupport parameter\n");
 		return 0;
 	}
+	
+	program_name = argv[0];
 
 	print_header();
 	get_HZ();
+	timerid = init_timer();
 	read_uptime(&uptime);
-    if(role == CLIENT)
+	gettimeofday(&begin,NULL);
+	scan(0);
+	gettimeofday(&end,NULL);
+	debug("Scan time last(us):%llu\n", timeval_to_us(end) - timeval_to_us(begin));
+	
+	init_timespec_val(&request,1,0);
+	
+	if(role == CLIENT)
     {
         printf("This is a socket Client\n");
         play_client();
@@ -136,10 +135,33 @@ int main(int argc,char *argv[])
 	{
 		while(1)
 		{
-			scan();
-			sleep(5);
+			s = nanosleep(&request, &remain);
+			if((s == -1) && (errno != EINTR))
+			{
+				printf("errno happened when nanosleep\n");
+				exit(1);
+			}
+			if(s == -1 && ((errno == EINTR)))
+			{
+				// nanosleep interrupt by signal,maybe not complete
+				request = remain;
+			}
+			if(s == 0)
+			{
+				//nanosleep complete, redo init request value
+				init_timespec_val(&request,1,0);
+			}
+
+			if(enable_scan)
+			{
+				enable_scan = 0;
+				gettimeofday(&begin,NULL);
+				scan(1);
+				gettimeofday(&end,NULL);
+				printf("Scan time last(us):%lu\n", timeval_to_us(end) - timeval_to_us(begin));	
+			}
 		}
 	}
-
+	del_timer(timerid);
     return 0;
 }

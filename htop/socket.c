@@ -18,7 +18,6 @@
 #include "draw.h"
 
 unsigned int operation_mode = 0xFFFFFFFF;
-char *client_ip = "127.0.0.1";
 char *server_ip = "127.0.0.1";
 int USER_ID = 0;
 
@@ -27,67 +26,130 @@ cpuinfo cpu;
 process_list_info process_list;
 
 
-
-char *populate_message(message_struct *info_ptr,char *text)
+char *populate_message_tail(message_tail *tail_ptr, char *text)
 {
-    static char *stream;
+	char *stream;
 
-    info_ptr->id = USER_ID;
-    info_ptr->time_val = time(NULL);
-    info_ptr->content = malloc(strlen(text));
-    if(info_ptr == NULL)
-    {
-    	printf("populate message failed,because of malloc content failed,%s\n",strerror(errno));
-    	return NULL;
-    }
-    strcpy(info_ptr->content,text);
+	/*fillup message tail*/
+	tail_ptr->id = USER_ID;
+	tail_ptr->type = TAIL_TYPE;
+	tail_ptr->content = malloc(strlen(text));
+	if((tail_ptr->content) == NULL)
+	{
+		printf("populate message tail failed, because of malloc content failed %s\n",strerror(errno));
+		return NULL;
+	}
+	strcpy(tail_ptr->content, text);
+	/* convert to stream */
+	stream = calloc(1, sizeof(message_header) + strlen(text));
+	memcpy(stream, &(tail_ptr->id), sizeof(int));
+	memcpy(stream + offsetof(message_tail,type), &(tail_ptr->type), sizeof(int));
+	strcpy(stream + offsetof(message_tail,content), tail_ptr->content);
+	memcpy(stream + offsetof(message_tail,reserved), tail_ptr->reserved, sizeof(char)*MESG_RESERVED_SIZE);
 
-    stream = realloc(stream,sizeof(*info_ptr));
+	printf("populat message tail success,text %s, %s \n",text,stream + offsetof(message_tail,content));
 
-    if(stream == NULL)
-    {
-    	printf("populate message failed,because of calloc stream failed,%s\n",strerror(errno));
-    	return NULL;
-    }
-    memcpy(stream, &(info_ptr->id), sizeof(int));
-    memcpy(stream + offsetof(message_struct,time_val), &(info_ptr->time_val), sizeof(time_t));
-    strcpy(stream + offsetof(message_struct,content), info_ptr->content);
-	memcpy(stream + offsetof(message_struct,mem_info), &memory, sizeof(meminfo));
-	memcpy(stream + offsetof(message_struct,cpu_info), &cpu, sizeof(cpuinfo));
-	memcpy(stream + offsetof(message_struct,pro_info), &process_list, sizeof(process_list_info));
+	return stream;
+}
+
+char *populate_message_content(message_content *content_ptr)
+{
+	static process_info *tmp = NULL;
+	char *stream;
+	content_ptr->id = USER_ID;
+	content_ptr->type = CONTENT_TYPE;
+	if(!tmp)
+	{
+		tmp = process_list.process;
+	}
+
+	content_ptr->pro_info= *tmp;
+	tmp = tmp->next;
+	
+	stream = calloc(1, sizeof(message_content));
+    memcpy(stream, content_ptr, sizeof(message_content));
+	return stream;
+}
+
+char *populate_message_header(message_header *header_ptr)
+{
+    char *stream;
+
+	/*fillup message header*/
+    header_ptr->id = USER_ID;
+	header_ptr->type = HEADER_TYPE;
+    header_ptr->time_val = time(0);
+	header_ptr->mem_info = memory;
+	header_ptr->cpu_info = cpu;
+	header_ptr->proc_size = process_list.size;
+	header_ptr->running_num = process_list.running_num;
+	header_ptr->sleeping_num = process_list.sleeping_num;
+	header_ptr->stoped_num = process_list.stoped_num;
+	header_ptr->zombie_num = process_list.zombie_num;
+
+	printf("populate message header success,time %d id %d cpu %s",(unsigned int)header_ptr->time_val,header_ptr->id,header_ptr->cpu_info.model);
+    stream = calloc(1, sizeof(message_header));
+    memcpy(stream, header_ptr, sizeof(message_header));
+   
     return stream;
 }
 
-int decode_message(char *stream,int len,message_struct *info_ptr)
+char *decode_message(char *stream,int len)
 {
-    memcpy(&(info_ptr->id), stream, sizeof(int));
-    memcpy(&(info_ptr->time_val), stream + offsetof(message_struct, time_val), sizeof(time_t));
-    info_ptr->content = malloc(len - sizeof(int) - sizeof(time_t));
-    memcpy(info_ptr->content, stream + offsetof(message_struct, content) ,len - sizeof(int) - sizeof(time_t));
-	memcpy(&info_ptr->mem_info, stream + offsetof(message_struct, mem_info),sizeof(meminfo));
-	memcpy(&info_ptr->cpu_info, stream + offsetof(message_struct, cpu_info),sizeof(cpuinfo));		
-	memcpy(&info_ptr->pro_info, stream + offsetof(message_struct, pro_info),sizeof(process_info));
+	int type;
+	/*type postion must be second byte*/
+	message_header header;
+	message_content content;
+	message_tail tail;
+    memcpy(&type, stream + sizeof(int), sizeof(int));
+	printf("message type = %d, len = %d\n", type, len);
+	if(type == HEADER_TYPE)
+	{
+		memcpy(&header,stream,sizeof(message_header));
+		#if 1
+		printf("user id = %d,time = %d,cpu %s\n", header.id, (unsigned int)header.time_val,header.cpu_info.model);
+		#endif
+	}
+	else if(type == CONTENT_TYPE)
+	{
+		memcpy(&content, stream, sizeof(message_content));
+		printf("process pid = %d, command = %s\n",
+			content.pro_info.stat_info.pid,
+			content.pro_info.stat_info.command);
+	}
+	else if(type == TAIL_TYPE)
+	{
+		memcpy(&(tail.id), stream,sizeof(int));
+		tail.type = type;
+		tail.content = malloc(len - sizeof(int) - sizeof(int) - sizeof(char) * MESG_RESERVED_SIZE);
+		memcpy(tail.content, stream + offsetof(message_tail, content), malloc_usable_size(tail.content));
+		memcpy(tail.reserved, stream + offsetof(message_tail,reserved), sizeof(char) * MESG_RESERVED_SIZE);
+
+		#if 1
+		printf("id %d type %d,len %d\n",tail.id,tail.type,len);
+		printf("content %s %s\n",tail.content,stream);
+		#endif
+	}
+   return tail.content;
 }
 
 int  print_received_message(int connection_fd)
 {
 	char buf[RECV_MAX_LEN];
 	int recv_len;
-	message_struct *info = (message_struct *)malloc(sizeof(message_struct));
-	recv_len = recv(connection_fd,buf,RECV_MAX_LEN,0);
-	if(recv_len > 0)
+	char *mesg;
+	
+	while((recv_len = recv(connection_fd,buf,RECV_MAX_LEN,0)) > 0)
 	{
-		decode_message(buf,recv_len,info);
-		if(strcmp(info->content,"quit") == 0)
+		mesg = decode_message(buf,recv_len);
+		/*
+		if(strcmp(mesg, "quit") == 0)
 		{
-			PINFO("user %d quit connection\n", info->id);
+			PINFO("user %d quit connection\n");
 			return 1;
 		}
-	    printf("user:%d time: %s\n",info->id,ctime(&info->time_val));
-	    printf("%s\n",info->content);
-		printf("cpu model %s,cores %d\n",info->cpu_info.model,info->cpu_info.cores);
+		*/
 	}
-    free(info);
     return 0;
 }
 
@@ -115,14 +177,15 @@ void play_server()
 {
     int sockfd,connection_fd;
     int resp_len;
+	char *host;
     
     struct sockaddr_in server_addr;
 
     // init sockaddr_in
     memset(&server_addr,0,sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = inet_addr(server_ip);
-    server_addr.sin_port = htons(SOCKET_SERVER_PORT);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(SOCKET_PORT);
     sockfd = init_server(AF_INET,SOCK_STREAM,0,&server_addr,sizeof(server_addr),5);
 
     //accept and receive mesaage
@@ -146,8 +209,8 @@ void play_server()
 int connect_retry(int domain,int type,int protocal,const struct sockaddr_in *addr, socklen_t alen)
 {
 	int sockfd,i;
-	#define MAX_NUM_RETRY 5
-	for(i = 0; i < MAX_NUM_RETRY; i++)
+	#define MAX_NUM_RETRY 128
+	for(i = 0; i < MAX_NUM_RETRY; i <<= 1)
 	{
 		if((sockfd = socket(domain,type,protocal)) < 0)
 	    {
@@ -160,42 +223,80 @@ int connect_retry(int domain,int type,int protocal,const struct sockaddr_in *add
 	    }
 	    printf("connect socket error\n");
         close(sockfd);
-        sleep(1);
+        sleep(i);
 	}
 	return -1;
 }
-int send_message(int sockfd,message_struct *info,char *text)
+int send_message(int sockfd, char *text)
 {
 	char *stream;
-	int send_len;
-	if((stream = populate_message(info,text)) == NULL)
+	int send_len = 0, i = 0 ;
+	message_header header;
+	message_content content;
+	message_tail tail;
+	
+	if((stream = populate_message_header(&header)) == NULL)
     {
-        PINFO("fillup message error,%s\n",strerror(errno));
+        PINFO("populate message header error,%s\n",strerror(errno));
     }
     if((send_len = send(sockfd,stream,malloc_usable_size(stream),0)) < 0)
     {
-        PINFO("send message failed,%s\n",strerror(errno));
+        PINFO("send message header failed,%s\n",strerror(errno));
     }
-    #if 0
-    printf("send message success,len = %d,id = %d,time_val = %d ,content = %s\n", send_len,info->id,info->time_val,info->content);
-	#endif
+
+	printf("send message header success,len = %d\n", send_len);
+	if(stream)
+		free(stream);
+
+	while(i < process_list.size)
+	{
+		if((stream = populate_message_content(&content)) == NULL)
+	    {
+	        PINFO("populate message content error,%s\n",strerror(errno));
+	    }
+	    if((send_len = send(sockfd,stream,malloc_usable_size(stream),0)) < 0)
+	    {
+	        PINFO("send message content failed,%s\n",strerror(errno));
+	    }
+
+	    printf("send message content success,len = %d\n", send_len);
+		if(stream)
+			free(stream);
+		i++;
+	}
+	
+	
+	if((stream = populate_message_tail(&tail,text)) == NULL)
+    {
+        PINFO("populate message tail error,%s\n",strerror(errno));
+    }
+    if((send_len = send(sockfd,stream,malloc_usable_size(stream),0)) < 0)
+    {
+        PINFO("send message tail failed,%s\n",strerror(errno));
+    }
+
+    printf("send message tail success,len = %d\n", send_len);
+	if(stream)
+		free(stream);
 }
 void play_client()
 {
     
-    int recv_len;
+    int recv_len, len;
     int sockfd;
-    message_struct *info = (message_struct *)malloc(sizeof(message_struct));
     char buf[RECV_MAX_LEN];
 
 	memset(buf,0,sizeof(buf));
 
     struct sockaddr_in server_addr;
-    
+
+	//get cpu,memory,process info
+	scan(FALSE);
+	
     memset(&server_addr,0,sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = inet_addr(client_ip);
-    server_addr.sin_port = htons(SOCKET_CLIENT_PORT);
+    server_addr.sin_addr.s_addr = inet_addr(server_ip);
+    server_addr.sin_port = htons(SOCKET_PORT);
 
     sockfd = connect_retry(AF_INET,SOCK_STREAM,0,&server_addr,sizeof(server_addr));
     if(sockfd < 0)
@@ -204,19 +305,19 @@ void play_client()
 		exit(EXIT_FAILURE);
 	}
 	
-	//get cpu,memory,process info
-	scan();
-	
     printf("please input message:\n");
-    while(getnstr(buf,sizeof(buf)) == OK && strcmp(buf,"quit") != 0)
+    while(fgets(buf,sizeof(buf),stdin) != NULL && strcmp(buf,"quit") != 0)
     {
-    	send_message(sockfd,info,buf);
+    	len = strlen(buf);
+		if(len > 0 && buf[len-1] == '\n')
+			buf[len-1] = '\0';
+    	send_message(sockfd,buf);
     	printf("please input message:\n");
 		memset(buf,0,sizeof(buf));
     }
     if(strcmp(buf,"quit") == 0)
     {
-    	send_message(sockfd,info,buf);
+    	send_message(sockfd,buf);
     }
     close(sockfd);
 }

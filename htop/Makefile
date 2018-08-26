@@ -9,7 +9,7 @@ linux_info.o : linux_info.c main.h linux_info.h
 	cc -c linux_info.c
 draw.o : draw.c linux_info.h draw.h
 	cc -c draw.c
-scoket.o : scoket.c scoket.h
+socket.o : socket.c socket.h
 	cc -c socket.c
 log.o : log.c log.h
 	cc -c log.c

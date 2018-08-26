@@ -359,14 +359,11 @@ int read_pid_status_info(process_info *this,unsigned int pid)
 	return 0;
 }
 // read stat file
-int read_pid_stat_info(process_info *this,unsigned int pid)
+int read_stat_info_from_file(process_info *this,const char * filename)
 {
     int i, size, seconds, fd;
-	char filename[128];
 	char buf[MAX_READ];
 	char *start, *end;
-
-	sprintf(filename,PID_STAT,pid);
     if((fd = open(filename,O_RDONLY)) < 0)
     {
         PINFO("can not open stat file %s %s\n",filename,strerror(errno));
@@ -384,14 +381,13 @@ int read_pid_stat_info(process_info *this,unsigned int pid)
 
 	if((end  = strchr(buf,')')) == NULL)
 		return -1;
-	this->stat_info.pid = pid;
     this->stat_info.comm_len= end - start;
 	size = this->stat_info.comm_len < COMMADN_MAX_LEN ? this->stat_info.comm_len : COMMADN_MAX_LEN;
     memcpy(this->stat_info.command, start, size);
     this->stat_info.command[size] = '\0';
 	this->last_time = (this->stat_info.utime + this->stat_info.stime);
-  	sscanf(end + 2, "%c %d %d %d %d %d %u %u %u %u %u %d %d %d %d %d %d %u %u %d %u %u %u %u %u %u %u %u %d %d %d %d %u",
-	  		  /*       1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33*/
+  	sscanf(end + 2, "%c %d %d %d %d %d %u %u %u %u %u %d %d %d %d %d %d %u %u %d %u %u %u %u %u %u %u %u %d %d %d %d %u %u %u %d %d",
+	  		  /*       1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37*/
 	  &(this->stat_info.state),
 	  &(this->stat_info.ppid),
 	  &(this->stat_info.pgrp),
@@ -424,7 +420,11 @@ int read_pid_stat_info(process_info *this,unsigned int pid)
 	  &(this->stat_info.blocked),
 	  &(this->stat_info.sigignore),
 	  &(this->stat_info.sigcatch),
-	  &(this->stat_info.wchan));
+	  &(this->stat_info.wchan),
+	  &(this->stat_info.nswap),
+	  &(this->stat_info.cnswap),
+	  &(this->stat_info.exit_signal),
+	  &(this->stat_info.processor));
 
 	
     this->time = (this->stat_info.utime + this->stat_info.stime);
@@ -438,6 +438,18 @@ int read_pid_stat_info(process_info *this,unsigned int pid)
 	PDEBUG("cpu usage %lf\n",this->cpu_usage);
 #endif
 	return 0;
+}
+int read_self_stat_info(process_info * this)
+{
+    return read_stat_info_from_file(this,SELF_STAT);
+}
+
+int read_pid_stat_info(process_info *this,unsigned int pid)
+{
+	char filename[128];
+	sprintf(filename,PID_STAT,pid);
+	this->stat_info.pid = pid;
+    return read_stat_info_from_file(this,filename);
 }
 
 void get_process_ptr(process_list_info *this,int pid,process_info **proc_ptr)

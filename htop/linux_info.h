@@ -90,6 +90,11 @@ typedef struct pid_stats {
   int           sigignore;                /** The bitmap of ignored signals **/
   int           sigcatch;                 /** The bitmap of catched signals **/
   unsigned int  wchan;  /** 33 **/        /** (too long) **/
+  unsigned int  nswap;  /** 34 **/        /** Number of pages swapped **/
+  unsigned int  cnswap;  /** 35 **/        /** Cumulative nswap for child processes **/
+  int  exit_signal;  /** 36 **/   /** Signal to be sent to parent when we die **/
+  int  processor;  /** 37 **/     /** CPU number last executed on **/
+  /** (too long) **/
 		
 } pid_stats;
 typedef struct pid_io
@@ -146,12 +151,15 @@ typedef struct process_list_info
 #define STAT			"/proc/stat"
 #define UPTIME			"/proc/uptime"
 #define PID_STAT	"/proc/%u/stat"
+#define SELF_STAT	"/proc/self/stat"
 #define PID_STATUS	"/proc/%u/status"
 #define PID_IO	"/proc/%u/io"
 #define PID_STATM	"/proc/%u/statm"
-extern void get_memory_info(meminfo *this);
-extern int get_cpu_info(cpuinfo *this);
-extern int get_process_list_info(process_list_info *this);
+
+extern void get_memory_info(meminfo *thisa);
+extern int get_cpu_info(cpuinfo *thisa);
+extern int get_process_list_info(process_list_info *thisa);
 extern void scan(int enable_draw);
 extern void read_uptime(unsigned long long *uptime);
+extern int read_self_stat_info(process_info * thisa);
 #endif
